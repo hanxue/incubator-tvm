@@ -184,6 +184,8 @@ set(USE_SORT ON)
 # Whether use MKL-DNN (DNNL) codegen
 set(USE_DNNL_CODEGEN OFF)
 
+# Whether use VAI codegen
+set(USE_VAI OFF) 
 # Build ANTLR parser for Relay text format
 # Possible values:
 # - ON: enable ANTLR by searching default locations (cmake find_program for antlr4 and /usr/local for jar)
