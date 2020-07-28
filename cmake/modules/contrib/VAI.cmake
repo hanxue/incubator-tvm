@@ -1,6 +1,9 @@
 if(USE_VAI)
   set(PYXIR_SHARED_LIB libpyxir.so)
-  find_program(PYTHON NAMES python python3 python3.6)
+  find_package(PythonInterp 3.6 REQUIRED)
+  if(NOT PYTHON)
+    find_program(PYTHON NAMES python3 python3.6)
+  endif()
   if(PYTHON)
     execute_process(COMMAND "${PYTHON}" "-c"
       "import pyxir as px; print(px.get_include_dir()); print(px.get_lib_dir());"

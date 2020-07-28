@@ -156,21 +156,28 @@ PackedFunc VaiRuntime::GetFunction(const std::string& name,
        return PackedFunc(
         [sptr_to_self, this](TVMArgs args, TVMRetValue* rv) { 
 
-        DLTensor* inputs=args[0]; 
+        DLTensor* inputs=args[0];
+        std::vector<ssize_t> in_shape;
+        for (int i = 0; i < inputs->ndim; ++i)
+          in_shape.push_back(inputs->shape[i]);
+        // std::vector<ssize_t>{1, inputs->shape[1],  inputs->shape[2],  inputs->shape[3]}
         pyxir::XBufferHolder xb_in = std::shared_ptr<pyxir::XBuffer>(
-            new pyxir::XBuffer((void *) static_cast<float*>(inputs->data), 4, "f", 4,
-                              std::vector<ssize_t>{1, inputs->shape[1],  inputs->shape[2],  inputs->shape[3]}, false, false));
+            new pyxir::XBuffer((void *) static_cast<float*>(inputs->data), 4, "f", in_shape.size(),
+                               in_shape, false, false));
+        
         std::vector<pyxir::XBufferHolder> out_tensors;
-
-      for (unsigned i = 0; i < out_tensor_names_.size(); ++i) {
-          auto shape = xgraph_->get(out_tensor_names_[i])->shapes[0];
-          std::cout<<out_tensor_names_[i]<<std::endl;
-          std::vector<ssize_t> out_shape{shape.begin(), shape.end()};
+        for (unsigned i = 0; i < out_tensor_names_.size(); ++i) {
+          //auto shape = xgraph_->get(out_tensor_names_[i])->shapes[0];
+          //std::cout<<out_tensor_names_[i]<<std::endl;
+          //std::vector<ssize_t> out_shape{shape.begin(), shape.end()};
           //TODO: Add batch size as a parameter
-          out_shape[0] = 1; //Batch size
-          std::vector<int64_t> ort_shape{out_shape.begin(), out_shape.end()};
+          //out_shape[0] = 1; //Batch size
+          //std::vector<int64_t> ort_shape{out_shape.begin(), out_shape.end()};
 
           DLTensor* output_tensor = args[args.size() - out_tensor_names_.size()+i];
+          std::vector<ssize_t> out_shape;
+          for (int i = 0; i < output_tensor->ndim; ++i)
+            out_shape.push_back(output_tensor->shape[i]);
           void* output_data = (void *) static_cast<float*>(output_tensor->data);
           out_tensors.push_back(std::shared_ptr<pyxir::XBuffer>(
             new pyxir::XBuffer(output_data, 4, "f", out_shape.size(), out_shape,

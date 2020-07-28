@@ -151,9 +151,9 @@ def vai_compiler(ref):
     assert isinstance(ref, tvm.relay.function.Function)
     name = str(ref.attrs.global_symbol)
     builder = CodegenVai(name, ref)
-    model_dir = target+ "_build/"
-    if os.path.exists(model_dir):
-        shutil.rmtree(model_dir)
+    model_dir = target + "_build/"
+    # if os.path.exists(model_dir):
+    #     shutil.rmtree(model_dir)
     xgraph = builder.convert_pyxir( target, model_dir)
     output_names = builder.get_output_names()
 
