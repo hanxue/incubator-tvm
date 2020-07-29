@@ -14,6 +14,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+
 """Vai runtime that load and run Xgraph."""
 import tvm._ffi
 
@@ -27,7 +28,9 @@ def create(name, model_dir, ctx, target, out_tensor_names):
         The context to deploy the module. It can be local or remote when there
         is only one TVMContext.
     target : str
-        The target for running subgraph. Currently 'dpuv1' is supported
+        The target for running subgraph.
+    out_tensor_names : list[str]
+        The output names from subgraph.
 
     Returns
     -------
@@ -35,11 +38,10 @@ def create(name, model_dir, ctx, target, out_tensor_names):
         Runtime Vai module that can be used to execute xgraph model.
     """
     device_type = ctx.device_type
-    runtime_func = "tvm.vai_runtime.create"
+    runtime_func = "tvm.vai_runtime.create" 
 
     fcreate = tvm._ffi.get_global_func(runtime_func)
     return VaiModule(fcreate(name, model_dir, target, out_tensor_names))
-
 
 
 class VaiModule(object):
@@ -54,10 +56,6 @@ class VaiModule(object):
     module : Module
         The internal tvm module that holds the actual vai functions.
 
-    Attributes
-    ----------
-    module : Module
-        The internal tvm module that holds the actual vai functions.
     """
 
     def __init__(self, module):

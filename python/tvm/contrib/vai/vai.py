@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 # pylint: disable=invalid-name, unused-argument, import-outside-toplevel
-"""Utility to compile CoreML models"""
+"""Utility to compile VAI models"""
 
 import os
 import shutil
@@ -35,6 +35,7 @@ from tvm.relay.op.annotation import compiler_begin, compiler_end
 
 from pyxir.frontend.tvm import from_relay
 
+
 @transform.function_pass(opt_level=0)
 class Annotator:
     def __init__(self, compiler, relay_ids):
@@ -47,17 +48,17 @@ class Annotator:
         class Annotator(tvm.relay.ExprMutator):
 
             def visit_tuple(self, expr):
-                temp = []
+                field_list = []
                 cond = int(hash(expr))
                 for field in expr.fields:    
                     if ( cond in annotator.relay_ids ):
-                        temp.append(compiler_begin(super().visit(field), annotator.compiler))
+                        field_list.append(compiler_begin(super().visit(field), annotator.compiler))
                     else:
-                        temp.append(super().visit(field))
+                        field_list.append(super().visit(field))
                 if cond in annotator.relay_ids:
-                    return compiler_end(Tuple(temp), annotator.compiler)
+                    return compiler_end(Tuple(field_list), annotator.compiler)
                 else:
-                    return Tuple(temp)
+                    return Tuple(field_list)
 
             def visit_tuple_getitem(self, expr):
               
@@ -87,6 +88,9 @@ class Annotator:
 
 
 def annotation(mod, params, target):
+    """
+    An annotator for VAI.
+    """
     xgraph = from_relay(mod,params,postprocessing = None)
     xgraph = pyxir.partition(xgraph, targets=[target]) 
     layers = xgraph.get_layers()
@@ -97,7 +101,7 @@ def annotation(mod, params, target):
 
 class CodegenVai(ExprVisitor):
     """
-    A visitor to traverse subgraphs and build XGraph
+    Traverse subgraphs and build XGraph
     """
     def __init__(self, model_name, function):
 
@@ -125,6 +129,9 @@ class CodegenVai(ExprVisitor):
         return xgraph
 
     def get_output_names(self):
+        """
+        Get output names from subgraph
+        """
         func = self.function
         output_names = []
         expr = func.body

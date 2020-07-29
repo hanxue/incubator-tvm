@@ -20,35 +20,12 @@
 /*!
  * \file vai_runtime.cc
  */
-#include <sstream>
 #include <tvm/runtime/registry.h>
-#include <bits/stdc++.h> 
 #include <tvm/ir/transform.h>
 #include "vai_runtime.h"
 
-
-void splitSen(std::string str, std::vector<std::string> &out_tensor_names) 
-{ 
-   std::string w = ""; 
-   for (auto rem : str) 
-   { 
-       if (rem==',') 
-       { 
-          out_tensor_names.push_back(w);  
-          w=""; 
-       } 
-       else
-       { 
-           w=w+rem; 
-       } 
-   }  
-   //cout<<w<<endl;
-   out_tensor_names.push_back(w); 
-}
-
 namespace tvm {
 namespace runtime {
-
 
 std::shared_ptr<pyxir::graph::XGraph> load_xgraph_model(const std::string& model_path) {
   std::string model_name = model_path + "/" + "dpu_xgraph.json";
@@ -71,14 +48,10 @@ void VaiRuntime::Init(const std::string& model_path, const std::string& target, 
 }
 
 
-//Module VaiRuntimeCreate(const std::string& name, const std::string& model_path, const std::string& target,const std::string out_tensor_names) {
-  Module VaiRuntimeCreate(const std::string& name, const std::string& model_path, const std::string& target,const Array<String>& out_tensor_names) {
-   Array<String> const_vars;
-   
-  auto exec = make_object<VaiRuntime>(name,model_path, const_vars );
+Module VaiRuntimeCreate(const std::string& name, const std::string& model_path, const std::string& target,const Array<String>& out_tensor_names) {
+   Array<String> const_vars;  
+  auto exec = make_object<VaiRuntime>(name, const_vars );
   std::vector<std::string>vec_out_tensor_names;
-  //splitSen(out_tensor_names, vec_out_tensor_names);
-  //std::vector <std::String> const_names;
     for (const auto& it : out_tensor_names) {
       vec_out_tensor_names.push_back(it);
     }
@@ -109,14 +82,14 @@ Module VaiRuntimeLoadFromBinary(void* strm ) {
     for (const auto& it : const_vars) {
       const_names.push_back(it);
     }
-    auto exec = make_object<VaiRuntime>(symbol_name, model_path, const_names);
+    auto exec = make_object<VaiRuntime>(symbol_name, const_names);
     exec->Init(model_path, target, out_tensor_names);
     return Module(exec);
   }
 
 TVM_REGISTER_GLOBAL("runtime.module.loadbinary_VaiRuntime").set_body_typed(VaiRuntimeLoadFromBinary);
-
 TVM_REGISTER_PASS_CONFIG_OPTION("target_", String);
+
 void VaiRuntime::SaveToBinary( dmlc::Stream* stream)   {
    stream->Write(this-> model_path_);
    stream->Write(this-> out_tensor_names_);
@@ -126,9 +99,7 @@ void VaiRuntime::SaveToBinary( dmlc::Stream* stream)   {
    for (const auto& it : const_names_) {
       consts.push_back(it);
     }
-    stream->Write(consts);
-
-
+   stream->Write(consts);
    
   }
 
@@ -160,20 +131,12 @@ PackedFunc VaiRuntime::GetFunction(const std::string& name,
         std::vector<ssize_t> in_shape;
         for (int i = 0; i < inputs->ndim; ++i)
           in_shape.push_back(inputs->shape[i]);
-        // std::vector<ssize_t>{1, inputs->shape[1],  inputs->shape[2],  inputs->shape[3]}
         pyxir::XBufferHolder xb_in = std::shared_ptr<pyxir::XBuffer>(
             new pyxir::XBuffer((void *) static_cast<float*>(inputs->data), 4, "f", in_shape.size(),
                                in_shape, false, false));
         
         std::vector<pyxir::XBufferHolder> out_tensors;
         for (unsigned i = 0; i < out_tensor_names_.size(); ++i) {
-          //auto shape = xgraph_->get(out_tensor_names_[i])->shapes[0];
-          //std::cout<<out_tensor_names_[i]<<std::endl;
-          //std::vector<ssize_t> out_shape{shape.begin(), shape.end()};
-          //TODO: Add batch size as a parameter
-          //out_shape[0] = 1; //Batch size
-          //std::vector<int64_t> ort_shape{out_shape.begin(), out_shape.end()};
-
           DLTensor* output_tensor = args[args.size() - out_tensor_names_.size()+i];
           std::vector<ssize_t> out_shape;
           for (int i = 0; i < output_tensor->ndim; ++i)
@@ -186,16 +149,10 @@ PackedFunc VaiRuntime::GetFunction(const std::string& name,
 
         std::vector<pyxir::XBufferHolder> in_tensors{xb_in};
         rt_mod_->execute(in_tensors, out_tensors);
- 
-
 
         });
       }
   }
       
-  
-
-
-
 }  // namespace runtime
 }  // namespace tvm
