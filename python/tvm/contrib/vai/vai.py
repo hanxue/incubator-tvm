@@ -20,20 +20,19 @@
 import os
 import shutil
 import numpy as np
-import tvm._ffi
-import pyxir
-from tvm.relay.expr_functor import ExprVisitor
-from pyxir.frontend.tvm import from_relay
-from tvm import relay
-from pyxir.graph.io.xgraph_io import XGraphIO
-from . import vai_runtime
 import json
+
+from tvm.relay.expr_functor import ExprVisitor
+from tvm import relay
+from . import vai_runtime
+import tvm._ffi
 from tvm.relay.expr import If, Tuple, TupleGetItem, Call
 from tvm.relay.function import Function
 from tvm.relay import transform
 from tvm.relay.op.annotation import compiler_begin, compiler_end
 
-from pyxir.frontend.tvm import from_relay
+import pyxir
+
 
 
 @transform.function_pass(opt_level=0)
@@ -91,7 +90,7 @@ def annotation(mod, params, target):
     """
     An annotator for VAI.
     """
-    xgraph = from_relay(mod,params,postprocessing = None)
+    xgraph = pyxir.frontend.tvm.from_relay(mod,params,postprocessing = None)
     xgraph = pyxir.partition(xgraph, targets=[target]) 
     layers = xgraph.get_layers()
     relay_ids = [list(np.array(layer.attrs['relay_id']).flatten()) for layer in layers if layer.target == target]
@@ -99,7 +98,8 @@ def annotation(mod, params, target):
     mod = Annotator("vai", relay_ids_flatten)(mod)
     return mod
 
-class CodegenVai(ExprVisitor):
+
+class codegen_vai:
     """
     Traverse subgraphs and build XGraph
     """
@@ -107,9 +107,6 @@ class CodegenVai(ExprVisitor):
 
         self.model_name = model_name
         self.function = function
-        self.out_map = {}
-        self.model_inputs_ = []
-        self.buf_idx_ = 0
         self.params = {}
 
 
@@ -118,14 +115,15 @@ class CodegenVai(ExprVisitor):
         """
          Convert relay submodule expression to PYXIR(XGRAPH)
         """
-        xgraph = from_relay(self.function,
+        #pyxir.frontend.tvm import from_relay
+        xgraph = pyxir.frontend.tvm.from_relay(self.function,
                         params         = self.params,
                         postprocessing = None)
 
         xgraph = pyxir.partition(xgraph, targets=[target])
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
-        XGraphIO.save(xgraph, out_dir + 'dpu_xgraph')
+        pyxir.graph.io.xgraph_io.XGraphIO.save(xgraph, out_dir + 'dpu_xgraph')
         return xgraph
 
     def get_output_names(self):
@@ -133,16 +131,16 @@ class CodegenVai(ExprVisitor):
         Get output names from subgraph
         """
         func = self.function
-        output_names = []
+        output_relay_ids = []
         expr = func.body
         if isinstance(expr, Tuple):
             for field in expr.fields:
-                output_names.append(hash(field))
+                output_relay_ids.append(hash(field))
         elif isinstance(expr, Call):
-            output_names.append(hash(expr))
+            output_relay_ids.append(hash(expr))
         else:
             raise ValueError("does not support {}".format(type(expr)))    
-        return output_names
+        return output_relay_ids
 
             
            
@@ -157,21 +155,21 @@ def vai_compiler(ref):
     target = str(pass_context.config['target_'])
     assert isinstance(ref, tvm.relay.function.Function)
     name = str(ref.attrs.global_symbol)
-    builder = CodegenVai(name, ref)
+    builder = codegen_vai(name, ref)
     model_dir = target + "_build/"
     # if os.path.exists(model_dir):
     #     shutil.rmtree(model_dir)
     xgraph = builder.convert_pyxir( target, model_dir)
-    output_names = builder.get_output_names()
+    output_relay_ids = builder.get_output_names()
 
     with open(model_dir+'/dpu_xgraph.json') as f:
         xgraph_nodes = json.load(f) 
     
-    #out_tensor_names = [(node['name']) for node in xgraph_nodes['nodes'] if node['LayerParameter']['attrs']['relay_id'][0] in output_names]
+    # get the output tensor names using xgraph and output relay ids
     out_tensor_names= []
     for node in xgraph_nodes['nodes']:
         if not node['LayerParameter']['internal']:
-            if node['LayerParameter']['attrs']['relay_id'][0] in output_names:
+            if node['LayerParameter']['attrs']['relay_id'][0] in output_relay_ids:
                 out_tensor_names.append(node['name'])     
 
     ctx = tvm.cpu(0)

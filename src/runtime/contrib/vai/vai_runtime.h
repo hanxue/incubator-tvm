@@ -53,10 +53,7 @@ namespace runtime {
 class VaiRuntime : public ModuleNode {
  public:
  VaiRuntime(const std::string& symbol_name, const Array<String> const_names):
-           symbol_name_(symbol_name), const_names_(const_names) {
-            this->symbol_name_= symbol_name;
-            this->const_names_ = { };
-          }
+           symbol_name_(symbol_name), const_names_(const_names) {}
           
   /*!
    * \brief Get member function to front-end.
@@ -87,19 +84,17 @@ class VaiRuntime : public ModuleNode {
    */
   void SaveToBinary(dmlc::Stream* stream) final;
 
+private:
   /*! \brief The only subgraph name for this module. */
   std::string symbol_name_;
   /*! \brief The graph. */
   std::string graph_json_;
   /*! \brief The required constant names. */
   Array<String> const_names_;
-  
   std::shared_ptr<pyxir::graph::XGraph> xgraph_;
   pyxir::RtModHolder rt_mod_;
-  std::string curr_subgraph_;
   std::string model_path_;
   std::string target_;
-  //std::vector<std::string> target;
   std::vector<std::string> in_tensor_names_;
   std::vector<std::string> out_tensor_names_;
   bool initialized_{false};

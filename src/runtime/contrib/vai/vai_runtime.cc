@@ -148,6 +148,7 @@ PackedFunc VaiRuntime::GetFunction(const std::string& name,
         }
 
         std::vector<pyxir::XBufferHolder> in_tensors{xb_in};
+        // Execute the subgraph.
         rt_mod_->execute(in_tensors, out_tensors);
 
         });
