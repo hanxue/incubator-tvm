@@ -53,7 +53,7 @@ namespace runtime {
 class VitisAIRuntime : public ModuleNode {
  public:
  VitisAIRuntime(const std::string& symbol_name, const Array<String> const_names):
-           symbol_name_(symbol_name), const_names_(const_names) {}
+   symbol_name_(symbol_name), const_names_(const_names) {}
           
   /*!
    * \brief Get member function to front-end.
@@ -71,11 +71,10 @@ class VitisAIRuntime : public ModuleNode {
   /*!
    * \brief Initialize the vai runtime with pyxir.
    * \param model_path The compiled model path.
-   * \param taget The name of the target being used
-   * \param output_names The output names of the model.
+   * \param target The name of the target being used
    */
 
- void Init(const std::string& model_path,const std::string& target, const std::vector<std::string> output_names);
+ void Init(const std::string& model_path,const std::string& target);
  
   /*!
    * \brief Serialize the content of the pyxir directory and save it to

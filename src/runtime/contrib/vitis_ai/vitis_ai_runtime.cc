@@ -27,41 +27,42 @@
 namespace tvm {
 namespace runtime {
 
+TVM_REGISTER_PASS_CONFIG_OPTION("target_", String);
+TVM_REGISTER_PASS_CONFIG_OPTION("vai_build_dir_", String);
+
 std::shared_ptr<pyxir::graph::XGraph> load_xgraph_model(const std::string& model_path) {
   std::string model_name = model_path + "/" + "dpu_xgraph.json";
   std::string model_weights = model_path + "/" + "dpu_xgraph.h5";
   return pyxir::load(model_name, model_weights);
 }
 
-void VitisAIRuntime::Init(const std::string& model_path, const std::string& target,   const std::vector<std::string> out_tensor_names  ) {
+void VitisAIRuntime::Init(const std::string& model_path, const std::string& target) {
   model_path_ = model_path;
   target_ = target;
   xgraph_ = load_xgraph_model(model_path_);
+  in_tensor_names_ = xgraph_->get_input_names();
+  out_tensor_names_ =  xgraph_->get_meta_attr("tvm_out_tensors").get_strings();
   pyxir::partition(xgraph_, std::vector<std::string>{target},"");
   pyxir::RunOptionsHolder run_options(new pyxir::runtime::RunOptions());
   run_options->on_the_fly_quantization = true;
-  in_tensor_names_ = xgraph_->get_input_names();
-  out_tensor_names_ =  out_tensor_names;
   rt_mod_ = pyxir::build_rt(xgraph_, target_ , in_tensor_names_, out_tensor_names_,
                                                                 "vai", run_options);
 }
 
 
-Module VitisAIRuntimeCreate(const std::string& name, const std::string& model_path, const std::string& target,const Array<String>& out_tensor_names) {
-   Array<String> const_vars;  
+Module VitisAIRuntimeCreate(const std::string& name,
+                            const std::string& model_path,
+                            const std::string& target) {
+  Array<String> const_vars;  
   auto exec = make_object<VitisAIRuntime>(name, const_vars );
-  std::vector<std::string>vec_out_tensor_names;
-    for (const auto& it : out_tensor_names) {
-      vec_out_tensor_names.push_back(it);
-    }
-  exec->Init(model_path, target, vec_out_tensor_names);
+  exec->Init(model_path, target);
   return Module(exec);
 }
 
 
 
 TVM_REGISTER_GLOBAL("tvm.vitis_ai_runtime.create").set_body([](TVMArgs args, TVMRetValue* rv) {
-  *rv = VitisAIRuntimeCreate(args[0], args[1], args[2], args[3]);
+  *rv = VitisAIRuntimeCreate(args[0], args[1], args[2]);
 });
 
 Module VitisAIRuntimeLoadFromBinary(void* strm ) {
@@ -69,11 +70,9 @@ Module VitisAIRuntimeLoadFromBinary(void* strm ) {
 
     std::string model_path;
     std::string symbol_name;
-    std::vector<std::string> out_tensor_names;
     std::vector<std::string> const_vars;
     std::string target;
     stream->Read(&model_path);
-    stream->Read(&out_tensor_names);
     stream->Read(&target);
     stream->Read(&symbol_name);
     stream->Read(&const_vars);
@@ -82,16 +81,14 @@ Module VitisAIRuntimeLoadFromBinary(void* strm ) {
       const_names.push_back(it);
     }
     auto exec = make_object<VitisAIRuntime>(symbol_name, const_names);
-    exec->Init(model_path, target, out_tensor_names);
+    exec->Init(model_path, target);
     return Module(exec);
   }
 
 TVM_REGISTER_GLOBAL("runtime.module.loadbinary_VitisAIRuntime").set_body_typed(VitisAIRuntimeLoadFromBinary);
-TVM_REGISTER_PASS_CONFIG_OPTION("target_", String);
 
 void VitisAIRuntime::SaveToBinary( dmlc::Stream* stream)   {
    stream->Write(this-> model_path_);
-   stream->Write(this-> out_tensor_names_);
    stream->Write(this-> target_);
    stream->Write(this->symbol_name_);
    std::vector<std::string> consts;

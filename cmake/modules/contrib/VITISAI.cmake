@@ -28,5 +28,5 @@ file(GLOB VAI_CONTRIB_SRC src/runtime/contrib/vitis_ai/*.cc)
 link_directories(${PYXIR_LIB_DIR})
 list(APPEND TVM_RUNTIME_LINKER_LIBS "pyxir")
 list(APPEND RUNTIME_SRCS ${VAI_CONTRIB_SRC})
-endif(USE_VAI)
+endif(USE_VITIS_AI)
 

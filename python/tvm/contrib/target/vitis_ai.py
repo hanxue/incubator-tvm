@@ -32,6 +32,7 @@ from tvm.relay import transform
 from tvm.relay.op.annotation import compiler_begin, compiler_end
 
 import pyxir
+import pyxir.frontend.tvm
 
 @transform.function_pass(opt_level=0)
 class VitisAIAnnotationPass:
@@ -109,7 +110,7 @@ class CodegenVitisAI:
 
 
 
-    def convert_pyxir(self, target, out_dir):
+    def convert_pyxir(self, target):
         """
          Convert relay submodule expression to PYXIR(XGRAPH)
         """
@@ -118,9 +119,6 @@ class CodegenVitisAI:
                         postprocessing = None)
 
         xgraph = pyxir.partition(xgraph, targets=[target])
-        if not os.path.exists(out_dir):
-            os.mkdir(out_dir)
-        pyxir.graph.io.xgraph_io.XGraphIO.save(xgraph, out_dir + 'dpu_xgraph')
         return xgraph
 
     def get_output_names(self):
@@ -144,21 +142,39 @@ def vai_compiler(ref):
     """
     Create a VAI runtime from a Relay module.
     """
-    pass_context = tvm.get_global_func("transform.GetCurrentPassContext")()
+    assert isinstance(ref, tvm.relay.function.Function)
+
     model_dir = os.getcwd()
     out_tensor_names = []
-    target = str(pass_context.config['target_'])
-    assert isinstance(ref, tvm.relay.function.Function)
     name = str(ref.attrs.global_symbol)
-    builder = CodegenVitisAI(name, ref)
-    model_dir = target + "_build/"
-    xgraph = builder.convert_pyxir( target, model_dir)
-    output_relay_ids = builder.get_output_names()
-    layers = xgraph.get_layers()
-    # get the output tensor names using xgraph and output relay ids
-    out_tensor_names= []
-    for layer in layers:
-        if not layer.internal:
-            if layer.attrs['relay_id'][0] in output_relay_ids:
-                out_tensor_names.append(layer.name)     
-    return vitis_ai_runtime.create(name, model_dir, target, out_tensor_names).module
+
+    pass_context = tvm.get_global_func("transform.GetCurrentPassContext")()
+    target = str(pass_context.config['target_'])
+    vai_build_dir = str(pass_context.config['vai_build_dir_']) \
+        if 'vai_build_dir_' in pass_context.config else None
+    if vai_build_dir and not os.path.exists(vai_build_dir):
+        raise ValueError("Provided Vitis-AI build dir: `{}` could not be found"
+                         .format(vai_build_dir))
+    
+    if not vai_build_dir:
+        builder = CodegenVitisAI(name, ref)
+        model_dir = target + "_build/"
+        xgraph = builder.convert_pyxir(target)
+        output_relay_ids = builder.get_output_names()
+        layers = xgraph.get_layers()
+        # get the output tensor names using xgraph and output relay ids
+        out_tensor_names= []
+        for layer in layers:
+            if not layer.internal:
+                if layer.attrs['relay_id'][0] in output_relay_ids:
+                    out_tensor_names.append(layer.name)
+        
+        # Save/serialize XGraph
+        if not os.path.exists(model_dir):
+            os.mkdir(model_dir)
+        xgraph.meta_attrs['tvm_out_tensors'] = out_tensor_names
+        pyxir.graph.io.xgraph_io.XGraphIO.save(xgraph, model_dir + 'dpu_xgraph')
+    else:
+        model_dir = vai_build_dir
+
+    return vitis_ai_runtime.create(name, model_dir, target).module

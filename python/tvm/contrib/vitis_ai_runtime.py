@@ -18,7 +18,7 @@
 """VitsiAI runtime that load and run Xgraph."""
 import tvm._ffi
 
-def create(name, model_dir, target, out_tensor_names):
+def create(name, model_dir, target):
     """Create a runtime executor module given a xgraph model and context.
     Parameters
     ----------
@@ -26,18 +26,16 @@ def create(name, model_dir, target, out_tensor_names):
         The directory where the compiled models are located.
     target : str
         The target for running subgraph.
-    out_tensor_names : list[str]
-        The output names from subgraph.
 
     Returns
     -------
     vai_runtime : VaiModule
         Runtime Vai module that can be used to execute xgraph model.
     """
-    runtime_func = "tvm.vai_runtime.create" 
+    runtime_func = "tvm.vitis_ai_runtime.create" 
 
     fcreate = tvm._ffi.get_global_func(runtime_func)
-    return VitisAIModule(fcreate(name, model_dir, target, out_tensor_names))
+    return VitisAIModule(fcreate(name, model_dir, target))
 
 class VitisAIModule(object):
     """Wrapper runtime module.
