@@ -18,12 +18,12 @@
  */
 
 /*!
- * \brief VAI runtime that can run VAI model
+ * \brief Vitis-AI runtime that can run model
  *        containing only tvm PackedFunc.
- * \file vai_runtime.h
+ * \file vitis_ai_runtime.h
  */
-#ifndef TVM_RUNTIME_CONTRIB_VAI_VAI_RUNTIME_H_
-#define TVM_RUNTIME_CONTRIB_VAI_VAI_RUNTIME_H_
+#ifndef TVM_RUNTIME_CONTRIB_VITIS_AI_RUNTIME_H_
+#define TVM_RUNTIME_CONTRIB_VITIS_AI_RUNTIME_H_
 
 
 
@@ -50,9 +50,9 @@ namespace runtime {
  *  This runtime can be accessed in various language via
  *  TVM runtime PackedFunc API.
  */
-class VaiRuntime : public ModuleNode {
+class VitisAIRuntime : public ModuleNode {
  public:
- VaiRuntime(const std::string& symbol_name, const Array<String> const_names):
+ VitisAIRuntime(const std::string& symbol_name, const Array<String> const_names):
            symbol_name_(symbol_name), const_names_(const_names) {}
           
   /*!
@@ -66,7 +66,7 @@ class VaiRuntime : public ModuleNode {
   /*!
    * \return The type key of the executor.
    */
-  const char* type_key() const { return "VaiRuntime"; }
+  const char* type_key() const { return "VitisAIRuntime"; }
 
   /*!
    * \brief Initialize the vai runtime with pyxir.
@@ -99,8 +99,6 @@ private:
   std::vector<std::string> out_tensor_names_;
   bool initialized_{false};
 
-  // TVM context
-  TVMContext ctx_;
 };
 
 }  // namespace runtime
@@ -109,4 +107,4 @@ private:
 
 
 
-#endif  // TVM_RUNTIME_CONTRIB_VAI_VAI_RUNTIME_H_
+#endif  // TVM_RUNTIME_CONTRIB_VITIS_AI_RUNTIME_H_
