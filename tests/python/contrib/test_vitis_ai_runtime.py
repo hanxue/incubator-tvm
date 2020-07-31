@@ -17,8 +17,7 @@ from tvm.relay import transform
 from tvm.contrib import util
 from tvm.relay.backend import compile_engine
 from tvm.relay.build_module import bind_params_by_name
-from tvm.contrib.vai import vai
-
+from tvm.relay.op.contrib.vitis_ai import annotation
 from mxnet.gluon.model_zoo.vision import get_model
 
 
@@ -65,7 +64,7 @@ def check_result(mod, map_inputs, out_shape, result, tol=1e-5, target="llvm",
 
 def test_extern_vai_resnet18():
     if not tvm.get_global_func("relay.ext.vai", True):
-        print("skip because VAI codegen is not available")
+        print("skip because VTISAI codegen is not available")
         return
 
     dtype = 'float32'
@@ -74,7 +73,7 @@ def test_extern_vai_resnet18():
     block = get_model('resnet18_v1', pretrained=True)
     mod, params = relay.frontend.from_mxnet(block, shape_dict)
     mod["main"] = bind_params_by_name(mod["main"], params)
-    mod = vai.annotation(mod, params, "dpuv1")
+    mod = annotation(mod, params, "dpuv1")
     mod = transform.MergeCompilerRegions()(mod)
     mod = transform.PartitionGraph()(mod)
     ref_mod, params = relay.frontend.from_mxnet(block, shape_dict)
