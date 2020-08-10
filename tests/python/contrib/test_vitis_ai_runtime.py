@@ -4,8 +4,11 @@ import sys
 import numpy as np
 import cv2
 
+from mxnet.gluon.model_zoo.vision import get_model
+
 import pyxir
-from pyxir.contrib.dpuv1 import dpuv1
+import pyxir.contrib.target.DPUCADX8G
+import pyxir.contrib.target.DPUCZDX8G
 from pyxir.frontend.tvm import from_relay
 
 import tvm
@@ -15,10 +18,10 @@ from tvm import relay
 from tvm import runtime
 from tvm.relay import transform
 from tvm.contrib import util
+from tvm.contrib.target import vitis_ai
 from tvm.relay.backend import compile_engine
 from tvm.relay.build_module import bind_params_by_name
 from tvm.relay.op.contrib.vitis_ai import annotation
-from mxnet.gluon.model_zoo.vision import get_model
 
 
 
@@ -39,7 +42,7 @@ def check_result(mod, map_inputs, out_shape, result, tol=1e-5, target="llvm",
 
     def check_graph_runtime_result():
         compile_engine.get().clear()
-        with tvm.transform.PassContext(opt_level=3, config = {'target_' : 'dpuv1'}):
+        with tvm.transform.PassContext(opt_level=3, config = {'target_' : 'DPUCADX8G'}):
             json, lib, param = relay.build(mod, target=target, params=params)
         lib = update_lib(lib)
         rt_mod = tvm.contrib.graph_runtime.create(json, lib, ctx)
@@ -64,7 +67,7 @@ def check_result(mod, map_inputs, out_shape, result, tol=1e-5, target="llvm",
 
 def test_extern_vai_resnet18():
     if not tvm.get_global_func("relay.ext.vai", True):
-        print("skip because VTISAI codegen is not available")
+        print("skip because VITIS-AI codegen is not available")
         return
 
     dtype = 'float32'
@@ -73,7 +76,7 @@ def test_extern_vai_resnet18():
     block = get_model('resnet18_v1', pretrained=True)
     mod, params = relay.frontend.from_mxnet(block, shape_dict)
     mod["main"] = bind_params_by_name(mod["main"], params)
-    mod = annotation(mod, params, "dpuv1")
+    mod = annotation(mod, params, "DPUCADX8G")
     mod = transform.MergeCompilerRegions()(mod)
     mod = transform.PartitionGraph()(mod)
     ref_mod, params = relay.frontend.from_mxnet(block, shape_dict)

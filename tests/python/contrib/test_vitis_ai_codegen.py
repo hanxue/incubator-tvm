@@ -19,7 +19,8 @@ import pytest
 from unittest import mock
 
 import pyxir
-from pyxir.contrib.dpuv1 import dpuv1
+import pyxir.contrib.target.DPUCADX8G
+import pyxir.contrib.target.DPUCZDX8G
 from pyxir.frontend.tvm import from_relay
 
 import tvm
@@ -60,7 +61,7 @@ def _create_graph():
 def _construct_model(func,params={}):
     mod = tvm.IRModule()
     mod["main"] = func
-    mod = annotation(mod, params,"dpuv1")
+    mod = annotation(mod, params,"DPUCADX8G")
     mod = transform.MergeCompilerRegions()(mod)
     mod = transform.PartitionGraph()(mod)
     #print(mod.astext())
@@ -72,7 +73,7 @@ def _construct_model(func,params={}):
            func.attrs['Compiler'] == 'vai':
             subgraph_mod["main"] = func
 
-            with tvm.transform.PassContext(opt_level=3, config= {'target_':'dpuv1'}):
+            with tvm.transform.PassContext(opt_level=3, config= {'target_':'DPUCADX8G'}):
                 fcompile(subgraph_mod["main"])
 
 
@@ -140,7 +141,7 @@ def test_annotate():
         params["bn_beta"] = np.random.rand(16).astype('float32') 
         params["bn_mean"] = np.random.rand(16).astype('float32') 
         params["bn_var"] = np.random.rand(16).astype('float32') 
-        mod = annotation(mod, params , "dpuv1")
+        mod = annotation(mod, params , "DPUCADX8G")
 
         opt_pass = tvm.transform.Sequential([
             transform.InferType(),
