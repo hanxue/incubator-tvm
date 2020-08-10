@@ -104,7 +104,9 @@ def vai_compiler(ref):
             if not layer.internal:
                 if layer.attrs['relay_id'][0] in output_relay_ids:
                     out_tensor_names.append(layer.name)
-        
+        if (len(out_tensor_names)==0):
+            raise ValueError("During codegeneration the loading of subexpression failed due to output tensorname mismatch in relay pyxir interface.")
+
         # Save/serialize XGraph
         if not os.path.exists(model_dir):
             os.mkdir(model_dir)
