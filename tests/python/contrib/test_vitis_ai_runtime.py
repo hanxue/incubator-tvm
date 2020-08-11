@@ -14,8 +14,10 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+# pylint: disable=invalid-name
+"""Vitis-AI runtime test."""
+import sys
 import numpy as np
-
 from mxnet.gluon.model_zoo.vision import get_model
 
 import pyxir
@@ -30,11 +32,13 @@ from tvm.contrib import util
 from tvm.relay.backend import compile_engine
 from tvm.relay.build_module import bind_params_by_name
 from tvm.relay.op.contrib.vitis_ai import annotation
+from tvm.contrib.target import vitis_ai
 
 
 
 def check_result(mod, map_inputs, out_shape, result, tol=1e-5, target="llvm",
                  ctx=tvm.cpu(), params=None):
+    """Check the result between reference and generated output with vitis-ai byoc flow"""
     if sys.platform == "win32":
         print("Skip test on Windows for now")
         return
@@ -73,6 +77,7 @@ def check_result(mod, map_inputs, out_shape, result, tol=1e-5, target="llvm",
 
 
 def test_extern_vai_resnet18():
+    """Test resnet18 model using Vitis-AI byoc flow"""
     if not tvm.get_global_func("relay.ext.vai", True):
         print("skip because VITIS-AI codegen is not available")
         return

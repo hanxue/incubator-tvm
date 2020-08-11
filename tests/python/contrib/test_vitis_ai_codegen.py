@@ -14,17 +14,17 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+# pylint: disable=invalid-name
+"""Vitis-AI codegen tests."""
 import numpy as np
-
-import pyxir
-import pyxir.contrib.target.DPUCADX8G
 
 import tvm
 from tvm import relay
 from tvm.relay import transform
 from tvm.relay.op.contrib.vitis_ai import annotation
-from tvm.contrib.target import vitis_ai
 
+import pyxir
+import pyxir.contrib.target.DPUCADX8G
 
 def set_func_attr(func, compile_name, symbol_name):
     func = func.with_attr("Primitive", tvm.tir.IntImm("int32", 1))
@@ -36,7 +36,6 @@ def set_func_attr(func, compile_name, symbol_name):
 def _create_graph():
     shape = (10, 10)
     mod = tvm.IRModule()
-
     x = relay.var('x', shape=shape)
     y = relay.var('y', shape=shape)
     z = x + x
@@ -46,26 +45,23 @@ def _create_graph():
     params = {}
     params["x"] = np.random.rand(10, 10).astype('float32')
     params["y"] = np.random.rand(10, 10).astype('float32')
-
-
     return mod, params
 
 
-def _construct_model(func, params={}):
+def _construct_model(func, params=None):
     mod = tvm.IRModule()
     mod["main"] = func
+    if params is None:
+        params = {}
     mod = annotation(mod, params, "DPUCADX8G")
     mod = transform.MergeCompilerRegions()(mod)
     mod = transform.PartitionGraph()(mod)
-    #print(mod.astext())
-
     fcompile = tvm._ffi.get_global_func("relay.ext.vai")
     subgraph_mod = tvm.IRModule()
-    for var, func in mod.functions.items():
-        if func.attrs and 'Compiler' in func.attrs and \
-           func.attrs['Compiler'] == 'vai':
-            subgraph_mod["main"] = func
-
+    for _, funcnode in mod.functions.items():
+        if funcnode.attrs and 'Compiler' in funcnode.attrs and \
+           funcnode.attrs['Compiler'] == 'vai':
+            subgraph_mod["main"] = funcnode
             with tvm.transform.PassContext(opt_level=3, config={'target_':'DPUCADX8G'}):
                 fcompile(subgraph_mod["main"])
 
@@ -102,6 +98,7 @@ def test_global_avg_pool2d():
     _construct_model(func)
 
 def test_annotate():
+    """Test annotation with Vitis-AI DP (DPUCADX8G)"""
     def partition():
         data = relay.var("data", relay.TensorType((1, 3, 224, 224), "float32"))
         weight = relay.var("weight", relay.TensorType((16, 3, 3, 3), "float32"))

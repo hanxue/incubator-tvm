@@ -31,20 +31,19 @@ import pyxir.frontend.tvm
 
 @transform.function_pass(opt_level=0)
 class VitisAIAnnotationPass:
-    """
-    VitisAI Annotation Pass
-    """
+    """The explicit pass wrapper around VitisAIAnnotationPass."""
     def __init__(self, compiler, relay_ids):
         self.compiler = compiler
         self.relay_ids = relay_ids
-
     def transform_function(self, func, mod, ctx):
+        """Transform func to annotate."""
         annotator = self
         class Annotator(tvm.relay.ExprMutator):
-            def visit_tuple(self, expr):
+            """Annotator for VITIS-AI DPU."""
+            def visit_tuple(self, tup):
                 field_list = []
-                cond = int(hash(expr))
-                for field in expr.fields:
+                cond = int(hash(tup))
+                for field in tup.fields:
                     if cond in annotator.relay_ids:
                         field_list.append(compiler_begin(super().visit(field), annotator.compiler))
                     else:
@@ -54,13 +53,13 @@ class VitisAIAnnotationPass:
                 else:
                     return Tuple(field_list)
 
-            def visit_tuple_getitem(self, expr):
-                if  int(hash(expr.tuple_value)) in annotator.relay_ids:
-                    tuple_value = compiler_begin(super().visit(expr.tuple_value),
+            def visit_tuple_getitem(self, op):
+                if  int(hash(op.tuple_value)) in annotator.relay_ids:
+                    tuple_value = compiler_begin(super().visit(op.tuple_value),
                                                  annotator.compiler)
-                    return compiler_end(TupleGetItem(tuple_value, expr.index), annotator.compiler)
+                    return compiler_end(TupleGetItem(tuple_value, op.index), annotator.compiler)
                 else:
-                    tuple_value = super().visit(expr.tuple_value)
+                    tuple_value = super().visit(op.tuple_value)
                     return TupleGetItem(tuple_value, expr.index)
             def visit_call(self, call):
                 if int(hash(call)) in annotator.relay_ids:
