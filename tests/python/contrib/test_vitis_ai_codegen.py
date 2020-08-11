@@ -15,22 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 import numpy as np
-import pytest
-from unittest import mock
 
 import pyxir
 import pyxir.contrib.target.DPUCADX8G
-import pyxir.contrib.target.DPUCZDX8G
-from pyxir.frontend.tvm import from_relay
 
 import tvm
 from tvm import relay
 from tvm.relay import transform
 from tvm.relay.op.contrib.vitis_ai import annotation
-from tvm.relay.build_module import bind_params_by_name
 from tvm.contrib.target import vitis_ai
-
-#pytest.importorskip("vai")
 
 
 def set_func_attr(func, compile_name, symbol_name):
@@ -58,10 +51,10 @@ def _create_graph():
     return mod, params
 
 
-def _construct_model(func,params={}):
+def _construct_model(func, params={}):
     mod = tvm.IRModule()
     mod["main"] = func
-    mod = annotation(mod, params,"DPUCADX8G")
+    mod = annotation(mod, params, "DPUCADX8G")
     mod = transform.MergeCompilerRegions()(mod)
     mod = transform.PartitionGraph()(mod)
     #print(mod.astext())
@@ -73,7 +66,7 @@ def _construct_model(func,params={}):
            func.attrs['Compiler'] == 'vai':
             subgraph_mod["main"] = func
 
-            with tvm.transform.PassContext(opt_level=3, config= {'target_':'DPUCADX8G'}):
+            with tvm.transform.PassContext(opt_level=3, config={'target_':'DPUCADX8G'}):
                 fcompile(subgraph_mod["main"])
 
 
@@ -84,8 +77,6 @@ def test_add():
     func = relay.Function([x], y)
     _construct_model(func)
 
-
-
 def test_relu():
     shape = (10, 10)
     x = relay.var('x', shape=shape)
@@ -93,16 +84,14 @@ def test_relu():
     func = relay.Function([x], y)
     _construct_model(func)
 
-
-
 def test_conv2d():
-    x = relay.var('x', shape=(1,3,224,224))
-    w = relay.const(np.zeros((16,3,3,3), dtype='float32'))
+    x = relay.var('x', shape=(1, 3, 224, 224))
+    w = relay.const(np.zeros((16, 3, 3, 3), dtype='float32'))
     y = relay.nn.conv2d(x, w, strides=[2, 2], padding=[1, 1, 1, 1], kernel_size=[3, 3])
     func = relay.Function([x], y)
     params = {}
-    params["x"] = np.zeros((16,3,3,3), dtype='float32')
-    _construct_model(func,params )
+    params["x"] = np.zeros((16, 3, 3, 3), dtype='float32')
+    _construct_model(func, params)
 
 
 def test_global_avg_pool2d():
@@ -134,14 +123,13 @@ def test_annotate():
                                bn_mvar], bn_output.astuple())
         mod = tvm.IRModule()
         mod["main"] = func
-        op_list = ["nn.batch_norm", "nn.conv2d"]
         params = {}
-        params["weight"] = np.random.rand(16,3,3,3).astype('float32') 
-        params["bn_gamma"] = np.random.rand(16).astype('float32') 
-        params["bn_beta"] = np.random.rand(16).astype('float32') 
-        params["bn_mean"] = np.random.rand(16).astype('float32') 
-        params["bn_var"] = np.random.rand(16).astype('float32') 
-        mod = annotation(mod, params , "DPUCADX8G")
+        params["weight"] = np.random.rand(16, 3, 3, 3).astype('float32')
+        params["bn_gamma"] = np.random.rand(16).astype('float32')
+        params["bn_beta"] = np.random.rand(16).astype('float32')
+        params["bn_mean"] = np.random.rand(16).astype('float32')
+        params["bn_var"] = np.random.rand(16).astype('float32')
+        mod = annotation(mod, params, "DPUCADX8G")
 
         opt_pass = tvm.transform.Sequential([
             transform.InferType(),

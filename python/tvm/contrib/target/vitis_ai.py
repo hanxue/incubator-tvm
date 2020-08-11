@@ -18,21 +18,14 @@
 """Utility to compile VITISAI models"""
 
 import os
-import shutil
-import numpy as np
-import json
 
-from tvm.relay.expr_functor import ExprVisitor
-from tvm import relay
-from .. import vitis_ai_runtime
+from tvm.relay.expr import Tuple, Call
 import tvm._ffi
-from tvm.relay.expr import If, Tuple, TupleGetItem, Call
-from tvm.relay.function import Function
-from tvm.relay import transform
-from tvm.relay.op.annotation import compiler_begin, compiler_end
 
 import pyxir
 import pyxir.frontend.tvm
+
+from .. import vitis_ai_runtime
 
 class CodegenVitisAI:
     """
@@ -51,9 +44,7 @@ class CodegenVitisAI:
          Convert relay submodule expression to PYXIR(XGRAPH)
         """
         xgraph = pyxir.frontend.tvm.from_relay(self.function,
-                        params         = self.params,
-                        postprocessing = None)
-
+                                               params=self.params, postprocessing=None)
         xgraph = pyxir.partition(xgraph, targets=[target])
         return xgraph
 
@@ -70,7 +61,7 @@ class CodegenVitisAI:
         elif isinstance(expr, Call):
             output_relay_ids.append(hash(expr))
         else:
-            raise ValueError("does not support {}".format(type(expr)))    
+            raise ValueError("does not support {}".format(type(expr)))
         return output_relay_ids
 
 @tvm._ffi.register_func("relay.ext.vai")
@@ -91,7 +82,6 @@ def vai_compiler(ref):
     if vai_build_dir and not os.path.exists(vai_build_dir):
         raise ValueError("Provided Vitis-AI build dir: `{}` could not be found"
                          .format(vai_build_dir))
-    
     if not vai_build_dir:
         builder = CodegenVitisAI(name, ref)
         model_dir = target + "_build/"
@@ -99,13 +89,14 @@ def vai_compiler(ref):
         output_relay_ids = builder.get_output_names()
         layers = xgraph.get_layers()
         # get the output tensor names using xgraph and output relay ids
-        out_tensor_names= []
+        out_tensor_names = []
         for layer in layers:
             if not layer.internal:
                 if layer.attrs['relay_id'][0] in output_relay_ids:
                     out_tensor_names.append(layer.name)
-        if (len(out_tensor_names)==0):
-            raise ValueError("During codegeneration the loading of subexpression failed due to output tensorname mismatch in relay pyxir interface.")
+        if len(out_tensor_names) == 0:
+            raise ValueError("During codegeneration the loading of subexpression \
+                             failed due to output tensorname mismatch in relay pyxir interface.")
 
         # Save/serialize XGraph
         if not os.path.exists(model_dir):

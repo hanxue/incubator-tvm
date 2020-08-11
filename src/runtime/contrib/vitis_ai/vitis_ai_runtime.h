@@ -26,7 +26,6 @@
 #define TVM_RUNTIME_CONTRIB_VITIS_AI_RUNTIME_H_
 
 
-
 #include <dlpack/dlpack.h>
 #include <tvm/runtime/ndarray.h>
 #include <tvm/runtime/packed_func.h>
@@ -37,7 +36,6 @@
 
 #include<pyxir/pyxir.hpp>
 #include <pyxir/runtime/run_options.hpp>
-#include <fstream>
 
 
 
@@ -52,9 +50,8 @@ namespace runtime {
  */
 class VitisAIRuntime : public ModuleNode {
  public:
- VitisAIRuntime(const std::string& symbol_name, const Array<String> const_names):
-   symbol_name_(symbol_name), const_names_(const_names) {}
-          
+VitisAIRuntime(const std::string& symbol_name, const Array<String> const_names):
+  symbol_name_(symbol_name), const_names_(const_names) {}
   /*!
    * \brief Get member function to front-end.
    * \param name The name of the function.
@@ -62,7 +59,6 @@ class VitisAIRuntime : public ModuleNode {
    * \return The corresponding member function.
    */
   virtual PackedFunc GetFunction(const std::string& name, const ObjectPtr<Object>& sptr_to_self);
-
   /*!
    * \return The type key of the executor.
    */
@@ -73,9 +69,7 @@ class VitisAIRuntime : public ModuleNode {
    * \param model_path The compiled model path.
    * \param target The name of the target being used
    */
-
- void Init(const std::string& model_path,const std::string& target);
- 
+void Init(const std::string& model_path, const std::string& target);
   /*!
    * \brief Serialize the content of the pyxir directory and save it to
    *        binary stream.
@@ -83,7 +77,7 @@ class VitisAIRuntime : public ModuleNode {
    */
   void SaveToBinary(dmlc::Stream* stream) final;
 
-private:
+ private:
   /*! \brief The only subgraph name for this module. */
   std::string symbol_name_;
   /*! \brief The graph. */
@@ -97,13 +91,7 @@ private:
   std::vector<std::string> in_tensor_names_;
   std::vector<std::string> out_tensor_names_;
   bool initialized_{false};
-
 };
-
 }  // namespace runtime
 }  // namespace tvm
-
-
-
-
 #endif  // TVM_RUNTIME_CONTRIB_VITIS_AI_RUNTIME_H_
