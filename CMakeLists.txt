@@ -56,6 +56,7 @@ tvm_option(PICOJSON_PATH "Path to PicoJSON" "3rdparty/picojson")
 tvm_option(USE_BLAS "The blas library to be linked" none)
 tvm_option(USE_MKL_PATH "MKL root path when use MKL blas" none)
 tvm_option(USE_MKLDNN "Build with MKLDNN" OFF)
+tvm_option(USE_DNNL_CODEGEN "Enable MKLDNN (DNNL) codegen" OFF)
 tvm_option(USE_CUDNN "Build with cuDNN" OFF)
 tvm_option(USE_CUBLAS "Build with cuBLAS" OFF)
 tvm_option(USE_THRUST "Build with Thrust" OFF)
@@ -71,10 +72,12 @@ tvm_option(USE_TFLITE "Build with tflite support" OFF)
 tvm_option(USE_TENSORFLOW_PATH "TensorFlow root path when use TFLite" none)
 tvm_option(USE_COREML "Build with coreml support" OFF)
 tvm_option(USE_TARGET_ONNX "Build with ONNX Codegen support" OFF)
+tvm_option(USE_ARM_COMPUTE_LIB "Build with Arm Compute Library" OFF)
+tvm_option(USE_ARM_COMPUTE_LIB_GRAPH_RUNTIME "Build with Arm Compute Library graph runtime" OFF)
 tvm_option(USE_VITIS_AI "Build with VITIS-AI Codegen support" OFF)   
 
 if(USE_CPP_RPC AND UNIX)
-  message(FATAL_ERROR "USE_CPP_RPC is only supported with WIN32. Use the Makefile for non-Windows.")
+message(FATAL_ERROR "USE_CPP_RPC is only supported with WIN32. Use the Makefile for non-Windows.")
 endif()
 
 # include directories
@@ -92,91 +95,91 @@ set(TVM_RUNTIME_LINKER_LIBS "")
 
 # Generic compilation options
 if(MSVC)
-  add_definitions(-DWIN32_LEAN_AND_MEAN)
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-  add_definitions(-D_SCL_SECURE_NO_WARNINGS)
-  add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /bigobj")
-  if(USE_MSVC_MT)
-    foreach(flag_var
-        CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
-        CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
-      if(${flag_var} MATCHES "/MD")
-        string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
-      endif(${flag_var} MATCHES "/MD")
-    endforeach(flag_var)
-  endif()
+add_definitions(-DWIN32_LEAN_AND_MEAN)
+add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+add_definitions(-D_SCL_SECURE_NO_WARNINGS)
+add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /bigobj")
+if(USE_MSVC_MT)
+foreach(flag_var
+	CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+	CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+  if(${flag_var} MATCHES "/MD")
+	string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+  endif(${flag_var} MATCHES "/MD")
+endforeach(flag_var)
+endif()
 else(MSVC)
-  if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-    message(STATUS "Build in Debug mode")
-    set(CMAKE_C_FLAGS "-O0 -g -Wall -fPIC ${CMAKE_C_FLAGS}")
-    set(CMAKE_CXX_FLAGS "-O0 -g -Wall -fPIC ${CMAKE_CXX_FLAGS}")
-    set(CMAKE_CUDA_FLAGS "-O0 -g -Xcompiler=-Wall -Xcompiler=-fPIC ${CMAKE_CUDA_FLAGS}")
-  else()
-    set(CMAKE_C_FLAGS "-O2 -Wall -fPIC ${CMAKE_C_FLAGS}")
-    set(CMAKE_CXX_FLAGS "-O2 -Wall -fPIC ${CMAKE_CXX_FLAGS}")
-    set(CMAKE_CUDA_FLAGS "-O2 -Xcompiler=-Wall -Xcompiler=-fPIC ${CMAKE_CUDA_FLAGS}")
-    if (HIDE_PRIVATE_SYMBOLS)
-      message(STATUS "Hide private symbols...")
-      set(CMAKE_C_FLAGS "-fvisibility=hidden ${CMAKE_C_FLAGS}")
-      set(CMAKE_CXX_FLAGS "-fvisibility=hidden ${CMAKE_CXX_FLAGS}")
-    endif(HIDE_PRIVATE_SYMBOLS)
-  endif ()
-  if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND
-      CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-    set(CMAKE_CXX_FLAGS "-faligned-new ${CMAKE_CXX_FLAGS}")
-  endif()
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+message(STATUS "Build in Debug mode")
+set(CMAKE_C_FLAGS "-O0 -g -Wall -fPIC ${CMAKE_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "-O0 -g -Wall -fPIC ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CUDA_FLAGS "-O0 -g -Xcompiler=-Wall -Xcompiler=-fPIC ${CMAKE_CUDA_FLAGS}")
+else()
+set(CMAKE_C_FLAGS "-O2 -Wall -fPIC ${CMAKE_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "-O2 -Wall -fPIC ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CUDA_FLAGS "-O2 -Xcompiler=-Wall -Xcompiler=-fPIC ${CMAKE_CUDA_FLAGS}")
+if (HIDE_PRIVATE_SYMBOLS)
+  message(STATUS "Hide private symbols...")
+  set(CMAKE_C_FLAGS "-fvisibility=hidden ${CMAKE_C_FLAGS}")
+  set(CMAKE_CXX_FLAGS "-fvisibility=hidden ${CMAKE_CXX_FLAGS}")
+endif(HIDE_PRIVATE_SYMBOLS)
+endif ()
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND
+  CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+set(CMAKE_CXX_FLAGS "-faligned-new ${CMAKE_CXX_FLAGS}")
+endif()
 
-  # Detect if we're compiling for Hexagon.
-  set(TEST_FOR_HEXAGON_CXX
-      "#ifndef __hexagon__"
-      "#error"
-      "#endif"
-      "int main() {}"
-      # Define _start_main to avoid linking errors with -fPIC.
-      "extern \"C\" void _start_main() {}")
-  set(TEST_FOR_HEXAGON_DIR
-      "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp")
-  set(TEST_FOR_HEXAGON_FILE "${TEST_FOR_HEXAGON_DIR}/test_for_hexagon.cc")
-  string(REPLACE ";" "\n" TEST_FOR_HEXAGON_CXX_TEXT "${TEST_FOR_HEXAGON_CXX}")
-  file(WRITE "${TEST_FOR_HEXAGON_FILE}" "${TEST_FOR_HEXAGON_CXX_TEXT}")
-  try_compile(BUILD_FOR_HEXAGON "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}"
-              "${TEST_FOR_HEXAGON_FILE}")
-  file(REMOVE "${TEST_FOR_HEXAGON_FILE}")
-  if(BUILD_FOR_HEXAGON)
-    message(STATUS "Building for Hexagon")
-  endif()
+# Detect if we're compiling for Hexagon.
+set(TEST_FOR_HEXAGON_CXX
+  "#ifndef __hexagon__"
+  "#error"
+  "#endif"
+  "int main() {}"
+  # Define _start_main to avoid linking errors with -fPIC.
+  "extern \"C\" void _start_main() {}")
+set(TEST_FOR_HEXAGON_DIR
+  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp")
+set(TEST_FOR_HEXAGON_FILE "${TEST_FOR_HEXAGON_DIR}/test_for_hexagon.cc")
+string(REPLACE ";" "\n" TEST_FOR_HEXAGON_CXX_TEXT "${TEST_FOR_HEXAGON_CXX}")
+file(WRITE "${TEST_FOR_HEXAGON_FILE}" "${TEST_FOR_HEXAGON_CXX_TEXT}")
+try_compile(BUILD_FOR_HEXAGON "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}"
+		  "${TEST_FOR_HEXAGON_FILE}")
+file(REMOVE "${TEST_FOR_HEXAGON_FILE}")
+if(BUILD_FOR_HEXAGON)
+message(STATUS "Building for Hexagon")
+endif()
 
-  # Detect if we're compiling for Android.
-  set(TEST_FOR_ANDROID_CXX
-      "#ifndef __ANDROID__"
-      "#error"
-      "#endif"
-      "int main() {}")
-  set(TEST_FOR_ANDROID_DIR
-      "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp")
-  set(TEST_FOR_ANDROID_FILE "${TEST_FOR_ANDROID_DIR}/test_for_android.cc")
-  string(REPLACE ";" "\n" TEST_FOR_ANDROID_CXX_TEXT "${TEST_FOR_ANDROID_CXX}")
-  file(WRITE "${TEST_FOR_ANDROID_FILE}" "${TEST_FOR_ANDROID_CXX_TEXT}")
-  try_compile(BUILD_FOR_ANDROID "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}"
-              "${TEST_FOR_ANDROID_FILE}")
-  file(REMOVE "${TEST_FOR_ANDROID_FILE}")
-  if(BUILD_FOR_ANDROID)
-    message(STATUS "Building for Android")
-  endif()
+# Detect if we're compiling for Android.
+set(TEST_FOR_ANDROID_CXX
+  "#ifndef __ANDROID__"
+  "#error"
+  "#endif"
+  "int main() {}")
+set(TEST_FOR_ANDROID_DIR
+  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp")
+set(TEST_FOR_ANDROID_FILE "${TEST_FOR_ANDROID_DIR}/test_for_android.cc")
+string(REPLACE ";" "\n" TEST_FOR_ANDROID_CXX_TEXT "${TEST_FOR_ANDROID_CXX}")
+file(WRITE "${TEST_FOR_ANDROID_FILE}" "${TEST_FOR_ANDROID_CXX_TEXT}")
+try_compile(BUILD_FOR_ANDROID "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}"
+		  "${TEST_FOR_ANDROID_FILE}")
+file(REMOVE "${TEST_FOR_ANDROID_FILE}")
+if(BUILD_FOR_ANDROID)
+message(STATUS "Building for Android")
+endif()
 endif(MSVC)
 
 # Hexagon has dlopen built into QuRT (no need for static library).
 if(NOT BUILD_FOR_HEXAGON)
-  list(APPEND TVM_RUNTIME_LINKER_LIBS ${CMAKE_DL_LIBS})
+list(APPEND TVM_RUNTIME_LINKER_LIBS ${CMAKE_DL_LIBS})
 endif()
 
 if(BUILD_FOR_ANDROID)
-  # EmuTLS on Android is in libgcc. Without it linked in, libtvm_runtime.so
-  # won't load on Android due to missing __emutls_XXX symbols.
-  list(APPEND TVM_RUNTIME_LINKER_LIBS "gcc")
+# EmuTLS on Android is in libgcc. Without it linked in, libtvm_runtime.so
+# won't load on Android due to missing __emutls_XXX symbols.
+list(APPEND TVM_RUNTIME_LINKER_LIBS "gcc")
 endif()
 
 # add source group
@@ -187,43 +190,44 @@ assign_source_group("Include" ${GROUP_INCLUDE})
 
 # Source file lists
 file(GLOB_RECURSE COMPILER_SRCS
-    src/auto_scheduler/*.cc
-    src/node/*.cc
-    src/ir/*.cc
-    src/arith/*.cc
-    src/te/*.cc
-    src/autotvm/*.cc
-    src/tir/*.cc
-    src/driver/*.cc
-    src/parser/*.cc
-    src/printer/*.cc
-    src/support/*.cc
-    )
+src/auto_scheduler/*.cc
+src/node/*.cc
+src/ir/*.cc
+src/arith/*.cc
+src/te/*.cc
+src/autotvm/*.cc
+src/tir/*.cc
+src/topi/*.cc
+src/driver/*.cc
+src/parser/*.cc
+src/printer/*.cc
+src/support/*.cc
+)
 
 file(GLOB CODEGEN_SRCS
-  src/target/*.cc
-  src/target/source/*.cc
-    )
+src/target/*.cc
+src/target/source/*.cc
+)
 
 list(APPEND COMPILER_SRCS ${CODEGEN_SRCS})
 
 file(GLOB_RECURSE RELAY_OP_SRCS
-    src/relay/op/*.cc
-    )
+src/relay/op/*.cc
+)
 file(GLOB_RECURSE RELAY_PASS_SRCS
-    src/relay/analysis/*.cc
-    src/relay/transforms/*.cc
-    src/relay/quantize/*.cc
-    )
+src/relay/analysis/*.cc
+src/relay/transforms/*.cc
+src/relay/quantize/*.cc
+)
 file(GLOB RELAY_BACKEND_SRCS
-    src/relay/backend/*.cc
-    src/relay/backend/vm/*.cc
-    )
+src/relay/backend/*.cc
+src/relay/backend/vm/*.cc
+)
 file(GLOB_RECURSE RELAY_IR_SRCS
-    src/relay/ir/*.cc
-    )
+src/relay/ir/*.cc
+)
 file(GLOB_RECURSE RELAY_QNN_SRCS
-    src/relay/qnn/*.cc
+src/relay/qnn/*.cc
 )
 list(APPEND COMPILER_SRCS ${RELAY_OP_SRCS})
 list(APPEND COMPILER_SRCS ${RELAY_PASS_SRCS})
@@ -233,79 +237,68 @@ list(APPEND COMPILER_SRCS ${RELAY_QNN_SRCS})
 
 
 if(USE_VM_PROFILER)
-  message(STATUS "Build compiler with Relay VM profiler support...")
-  file(GLOB BACKEND_VM_PROFILER_SRCS src/relay/backend/vm/profiler/*.cc)
-  list(APPEND COMPILER_SRCS ${BACKEND_VM_PROFILER_SRCS})
+message(STATUS "Build compiler with Relay VM profiler support...")
+file(GLOB BACKEND_VM_PROFILER_SRCS src/relay/backend/vm/profiler/*.cc)
+list(APPEND COMPILER_SRCS ${BACKEND_VM_PROFILER_SRCS})
 endif(USE_VM_PROFILER)
 
 file(GLOB DATATYPE_SRCS src/target/datatype/*.cc)
 list(APPEND COMPILER_SRCS ${DATATYPE_SRCS})
 
-
-file(GLOB TOPI_SRCS
-    topi/src/*.cc
-)
-
 file(GLOB RUNTIME_SRCS
-  src/runtime/*.cc
-  src/runtime/vm/*.cc
+src/runtime/*.cc
+src/runtime/vm/*.cc
 )
 
 if(BUILD_FOR_HEXAGON)
-  # Add file implementing posix_memalign.
-  list(APPEND RUNTIME_SRCS src/runtime/hexagon/hexagon_posix.cc)
+# Add file implementing posix_memalign.
+list(APPEND RUNTIME_SRCS src/runtime/hexagon/hexagon_posix.cc)
 
-  add_definitions(-D_MACH_I32=int)
+add_definitions(-D_MACH_I32=int)
 endif()
 
 # Package runtime rules
 if(NOT USE_RTTI)
-  add_definitions(-DDMLC_ENABLE_RTTI=0)
+add_definitions(-DDMLC_ENABLE_RTTI=0)
 endif()
 
 list(APPEND RUNTIME_SRCS 3rdparty/bfloat16/bfloat16.cc)
 
 if(USE_RPC)
-  message(STATUS "Build with RPC support...")
-  file(GLOB RUNTIME_RPC_SRCS src/runtime/rpc/*.cc)
-  list(APPEND RUNTIME_SRCS ${RUNTIME_RPC_SRCS})
+message(STATUS "Build with RPC support...")
+file(GLOB RUNTIME_RPC_SRCS src/runtime/rpc/*.cc)
+list(APPEND RUNTIME_SRCS ${RUNTIME_RPC_SRCS})
 endif(USE_RPC)
 
 file(GLOB STACKVM_RUNTIME_SRCS src/runtime/stackvm/*.cc)
 file(GLOB STACKVM_CODEGEN_SRCS src/target/stackvm/*.cc)
 list(APPEND COMPILER_SRCS ${STACKVM_CODEGEN_SRCS})
 if(USE_STACKVM_RUNTIME)
-  message(STATUS "Build with stackvm support in runtime...")
-  list(APPEND RUNTIME_SRCS ${STACKVM_RUNTIME_SRCS})
+message(STATUS "Build with stackvm support in runtime...")
+list(APPEND RUNTIME_SRCS ${STACKVM_RUNTIME_SRCS})
 else()
-  list(APPEND COMPILER_SRCS ${STACKVM_RUNTIME_SRCS})
+list(APPEND COMPILER_SRCS ${STACKVM_RUNTIME_SRCS})
 endif(USE_STACKVM_RUNTIME)
 
 if(USE_GRAPH_RUNTIME)
-  message(STATUS "Build with Graph runtime support...")
-  file(GLOB RUNTIME_GRAPH_SRCS src/runtime/graph/*.cc)
-  list(APPEND RUNTIME_SRCS ${RUNTIME_GRAPH_SRCS})
+message(STATUS "Build with Graph runtime support...")
+file(GLOB RUNTIME_GRAPH_SRCS src/runtime/graph/*.cc)
+list(APPEND RUNTIME_SRCS ${RUNTIME_GRAPH_SRCS})
 
-  if(USE_GRAPH_RUNTIME_DEBUG)
-    message(STATUS "Build with Graph runtime debug support...")
-    file(GLOB RUNTIME_GRAPH_DEBUG_SRCS src/runtime/graph/debug/*.cc)
-    list(APPEND RUNTIME_SRCS ${RUNTIME_GRAPH_DEBUG_SRCS})
-    set_source_files_properties(${RUNTIME_GRAPH_SRCS}
-      PROPERTIES COMPILE_DEFINITIONS "TVM_GRAPH_RUNTIME_DEBUG")
-  endif(USE_GRAPH_RUNTIME_DEBUG)
+if(USE_GRAPH_RUNTIME_DEBUG)
+message(STATUS "Build with Graph runtime debug support...")
+file(GLOB RUNTIME_GRAPH_DEBUG_SRCS src/runtime/graph/debug/*.cc)
+list(APPEND RUNTIME_SRCS ${RUNTIME_GRAPH_DEBUG_SRCS})
+set_source_files_properties(${RUNTIME_GRAPH_SRCS}
+  PROPERTIES COMPILE_DEFINITIONS "TVM_GRAPH_RUNTIME_DEBUG")
+endif(USE_GRAPH_RUNTIME_DEBUG)
 endif(USE_GRAPH_RUNTIME)
 
 if(USE_VM_PROFILER)
-  message(STATUS "Build with Relay VM profiler support...")
-  file(GLOB RUNTIME_VM_PROFILER_SRCS src/runtime/vm/profiler/*.cc)
-  list(APPEND RUNTIME_SRCS ${RUNTIME_VM_PROFILER_SRCS})
+message(STATUS "Build with Relay VM profiler support...")
+file(GLOB RUNTIME_VM_PROFILER_SRCS src/runtime/vm/profiler/*.cc)
+list(APPEND RUNTIME_SRCS ${RUNTIME_VM_PROFILER_SRCS})
 endif(USE_VM_PROFILER)
-
-if(USE_EXAMPLE_EXT_RUNTIME)
-  message(STATUS "Build with example external runtime...")
-  file(GLOB RUNTIME_EXAMPLE_EXTERNAL_SRCS src/runtime/contrib/example_ext_runtime/*.cc)
-  list(APPEND RUNTIME_SRCS ${RUNTIME_EXAMPLE_EXTERNAL_SRCS})
-endif(USE_EXAMPLE_EXT_RUNTIME)
 
 # Module rules
 include(cmake/modules/VTA.cmake)
@@ -332,6 +325,7 @@ include(cmake/modules/contrib/TFLite.cmake)
 include(cmake/modules/contrib/TF_TVMDSOOP.cmake)
 include(cmake/modules/contrib/CoreML.cmake)
 include(cmake/modules/contrib/ONNX.cmake)
+include(cmake/modules/contrib/ArmComputeLib.cmake)
 include(cmake/modules/contrib/VITISAI.cmake) 
 
 include(CheckCXXCompilerFlag)
@@ -346,7 +340,6 @@ else()
 endif()
 
 add_library(tvm SHARED ${COMPILER_SRCS} ${RUNTIME_SRCS})
-add_library(tvm_topi SHARED ${TOPI_SRCS})
 add_library(tvm_runtime SHARED ${RUNTIME_SRCS})
 
 if(USE_CPP_RPC)
@@ -364,11 +357,9 @@ endif(USE_RELAY_DEBUG)
 if(USE_FALLBACK_STL_MAP)
   message(STATUS "Building with STL Map...")
   set_target_properties(tvm PROPERTIES COMPILE_DEFINITIONS "USE_FALLBACK_STL_MAP=1")
-  set_target_properties(tvm_topi PROPERTIES COMPILE_DEFINITIONS "USE_FALLBACK_STL_MAP=1")
 else()
   message(STATUS "Building with TVM Map...")
   set_target_properties(tvm PROPERTIES COMPILE_DEFINITIONS "USE_FALLBACK_STL_MAP=0")
-  set_target_properties(tvm_topi PROPERTIES COMPILE_DEFINITIONS "USE_FALLBACK_STL_MAP=0")
 endif(USE_FALLBACK_STL_MAP)
 
 if(BUILD_FOR_HEXAGON)
@@ -389,12 +380,10 @@ if(USE_THREADS AND NOT BUILD_FOR_HEXAGON)
   set(THREADS_PREFER_PTHREAD_FLAG TRUE)
   find_package(Threads REQUIRED)
   target_link_libraries(tvm Threads::Threads)
-  target_link_libraries(tvm_topi Threads::Threads)
   target_link_libraries(tvm_runtime Threads::Threads)
 endif()
 
 target_link_libraries(tvm ${TVM_LINKER_LIBS} ${TVM_RUNTIME_LINKER_LIBS})
-target_link_libraries(tvm_topi tvm ${TVM_LINKER_LIBS} ${TVM_RUNTIME_LINKER_LIBS})
 target_link_libraries(tvm_runtime ${TVM_RUNTIME_LINKER_LIBS})
 
 if (HIDE_PRIVATE_SYMBOLS AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -403,18 +392,8 @@ if (HIDE_PRIVATE_SYMBOLS AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   # but it's not available until CMake 3.13. Switch to 'target_link_options'
   # once minimum CMake version is bumped up to 3.13 or above.
   target_link_libraries(tvm ${HIDE_SYMBOLS_LINKER_FLAGS})
-  target_link_libraries(tvm_topi ${HIDE_SYMBOLS_LINKER_FLAGS})
   target_link_libraries(tvm_runtime ${HIDE_SYMBOLS_LINKER_FLAGS})
 endif()
-
-# Related headers
-target_include_directories(
-  tvm
-  PUBLIC "topi/include")
-target_include_directories(
-  tvm_topi
-  PUBLIC "topi/include")
-
 
 # Tests
 set(TEST_EXECS "")
@@ -451,17 +430,11 @@ add_custom_target(runtime DEPENDS tvm_runtime)
 
 # Installation rules
 install(TARGETS tvm DESTINATION lib${LIB_SUFFIX})
-install(TARGETS tvm_topi DESTINATION lib${LIB_SUFFIX})
 install(TARGETS tvm_runtime DESTINATION lib${LIB_SUFFIX})
 
 if (INSTALL_DEV)
   install(
     DIRECTORY "include/." DESTINATION "include"
-    FILES_MATCHING
-    PATTERN "*.h"
-  )
-  install(
-    DIRECTORY "topi/include/." DESTINATION "include"
     FILES_MATCHING
     PATTERN "*.h"
   )
