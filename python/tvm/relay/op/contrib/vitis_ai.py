@@ -60,7 +60,7 @@ class VitisAIAnnotationPass:
                     return compiler_end(TupleGetItem(tuple_value, op.index), annotator.compiler)
                 else:
                     tuple_value = super().visit(op.tuple_value)
-                    return TupleGetItem(tuple_value, expr.index)
+                    return TupleGetItem(tuple_value, op.index)
             def visit_call(self, call):
                 if int(hash(call)) in annotator.relay_ids:
                     new_args = []
