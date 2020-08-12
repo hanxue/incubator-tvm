@@ -20,6 +20,9 @@ FROM xilinx/vitis-ai:latest
 
 RUN apt-get update --fix-missing
 
+ENV PYXIR_HOME /opt/pyxir
+RUN mkdir "${PYXIR_HOME}"
+
 COPY install/ubuntu_install_core.sh /install/ubuntu_install_core.sh
 RUN bash /install/ubuntu_install_core.sh
 
@@ -54,6 +57,15 @@ RUN . $VAI_ROOT/conda/etc/profile.d/conda.sh && \
     conda activate vitis-ai-tensorflow && \
     pip install --no-cache-dir antlr4-python3-runtime
 
-ENV PATH="/opt/vitis_ai/compiler/dnnc/dpuv2:${PATH}"
+# BUILD PYXIR
+RUN pip3 install --upgrade numpy
+RUN git clone --recursive https://github.com/Xilinx/pyxir.git "${PYXIR_HOME}"
+ENV LD_LIBRARY_PATH="/opt/xilinx/xrt/lib:${LD_LIBRARY_PATH}"
+RUN . $VAI_ROOT/conda/etc/profile.d/conda.sh && \
+    conda activate vitis-ai-tensorflow && \
+    cd "${PYXIR_HOME}" && \
+    git checkout master && \
+    git submodule update --init --recursive && \
+	python3 setup.py install --use_vai_rt
 
 ENV USER="root"
