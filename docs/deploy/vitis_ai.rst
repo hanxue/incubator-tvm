@@ -196,12 +196,10 @@ Host setup and docker build
    git clone --recursive https://github.com/apache/incubator-tvm.git
 2. Build and start the tvm runtime Vitis-AI Docker Container.
 ::
-   cd incubator-tvm 
-   bash incubator-tvm/docker/build.sh ci_vai_1x bash
-   bash incubator-tvm/docker/bash.sh tvm.ci_vai_1x
+   bash incubator-tvm/docker/build.sh ci_vai bash
+   bash incubator-tvm/docker/bash.sh tvm.ci_vai
   
    #Setup inside container
-   source /opt/xilinx/xrt/setup.sh
    conda activate vitis-ai-tensorflow
    
 3. Build TVM inside the container with Vitis-AI
