@@ -215,7 +215,7 @@ Host setup and docker build
    cp cmake/config.cmake build
    cd build
    echo set\(USE_LLVM ON\) >> config.cmake
-   echo set\(USE_VITISAI ON\) >> config.cmake
+   echo set\(USE_VITIS_AI ON\) >> config.cmake
    cmake ..
    make -j$(nproc)
 
