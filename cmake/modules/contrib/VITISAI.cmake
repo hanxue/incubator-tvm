@@ -22,7 +22,7 @@ if(USE_VITIS_AI)
     find_program(PYTHON NAMES python3 python3.6)
   endif()
   if(PYTHON)
-    execute_process(COMMAND "${PYTHON}" "-c"
+    execute_process(COMMAND "${PYTHON_EXECUTABLE}" "-c"
       "import pyxir as px; print(px.get_include_dir()); print(px.get_lib_dir());"
       RESULT_VARIABLE __result
       OUTPUT_VARIABLE __output
