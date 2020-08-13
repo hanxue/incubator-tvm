@@ -127,9 +127,9 @@ Hardware setup and docker build
    ::
 
 
-      cd tvm
-      bash tvm/docker/build.sh ci_vai_1x bash
-      bash tvm/docker/bash.sh tvm.ci_vai_1x
+      cd incubator-tvm
+      bash incubator-tvm/docker/build.sh ci_vai_1x bash
+      bash incubator-tvm/docker/bash.sh tvm.ci_vai_1x
       #Setup inside container
       source /opt/xilinx/xrt/setup.sh
       . $VAI_ROOT/conda/etc/profile.d/conda.sh
@@ -197,9 +197,9 @@ Host setup and docker build
    git clone --recursive https://github.com/apache/incubator-tvm.git
 2. Build and start the tvm runtime Vitis-AI Docker Container.
 ::
-   cd tvm 
-   bash tvm/docker/build.sh ci_vai_1x bash
-   bash tvm/docker/bash.sh tvm.ci_vai_1x
+   cd incubator-tvm 
+   bash incubator-tvm/docker/build.sh ci_vai_1x bash
+   bash incubator-tvm/docker/bash.sh tvm.ci_vai_1x
   
    #Setup inside container
    source /opt/xilinx/xrt/setup.sh
@@ -210,7 +210,7 @@ Host setup and docker build
  ::
  
  
-   cd tvm
+   cd incubator-tvm
    mkdir build
    cp cmake/config.cmake build
    cd build
