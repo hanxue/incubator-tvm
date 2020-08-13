@@ -79,7 +79,11 @@ Hardware setup and docker build
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. Clone the Vitis AI repository:
-   ``git clone https://github.com/xilinx/vitis-ai``
+   ::
+
+
+   git clone https://github.com/xilinx/vitis-ai
+   
 2. Install Docker, and add the user to the docker group. Link the user
    to docker installation instructions from the following docker's
    website:
@@ -104,24 +108,54 @@ Hardware setup and docker build
    them at once. To do so:
 
    -  Run the following commands:
-      ``cd Vitis-AI/alveo/packages     sudo su     ./install.sh``
+   ::
+   
+   
+      cd Vitis-AI/alveo/packages
+      sudo su
+      ./install.sh
+      
    -  Power cycle the system.
-
+   
 5. Clone tvm repo
-   ``git clone --recursive https://github.com/apache/incubator-tvm.git``
+   ::
+   
+   
+      git clone --recursive https://github.com/apache/incubator-tvm.git
+   
 6. Build and start the tvm runtime Vitis-AI Docker Container.
-   ``cd tvm    bash tvm/docker/build.sh ci_vai_1x bash     bash tvm/docker/bash.sh tvm.ci_vai_1x``
-   Setup inside container
-   ``source /opt/xilinx/xrt/setup.sh    . $VAI_ROOT/conda/etc/profile.d/conda.sh    conda activate vitis-ai-tensorflow``
-7. Build TVM inside the container with Vitis-AI
-   ``cd tvm    mkdir build    cp cmake/config.cmake build    cd build    echo set\(USE_LLVM ON\) >> config.cmake    echo set\(USE_VITIS_AI ON\) >> config.cmake    cmake ..    make -j$(nproc)``
-8. Add tvm/python to PYTHONPATH \`\`\` SCRIPT\_DIR="\ :math:`( cd "`\ (
-   dirname
-   ":math:`{BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"     export TVM_HOME=`\ SCRIPT\_DIR/tvm
-   export
-   PYTHONPATH=\ :math:`TVM_HOME/python:`\ TVM\_HOME/topi/python:${PYTHONPATH}
+   ::
 
-   \`\`\` ### Edge (DPUCZDX8G)
+
+      cd tvm
+      bash tvm/docker/build.sh ci_vai_1x bash
+      bash tvm/docker/bash.sh tvm.ci_vai_1x
+      Setup inside container
+      source /opt/xilinx/xrt/setup.sh
+      . $VAI_ROOT/conda/etc/profile.d/conda.sh
+      conda activate vitis-ai-tensorflow
+   
+7. Build TVM inside the container with Vitis-AI
+   ::
+
+
+      cd tvm
+      mkdir build
+      cp cmake/config.cmake build
+      cd build    echo set\(USE_LLVM ON\) >> config.cmake
+      echo set\(USE_VITIS_AI ON\) >> config.cmake
+      cmake ..
+      make -j$(nproc)
+   
+8.  Add TVM to Python path
+    :: 
+   
+   
+      export PYTHONPATH=$PYTHONPATH:{PATH-TO-INCUBATOR-TVM}/python:{PATH-TO-INCUBATOR-TVM}/topi/python
+      
+Edge (DPUCZDX8G)
+^^^^^^^^^^^^^^^^
+
 
 For edge deployment we make use of two systems referred to as host and
 edge. The `host <#host-requirements>`__ system is responsible for
@@ -159,13 +193,32 @@ Host setup and docker build
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1. Clone tvm repo
-   ``git clone --recursive https://github.com/apache/incubator-tvm.git``
+::
+   git clone --recursive https://github.com/apache/incubator-tvm.git
 2. Build and start the tvm runtime Vitis-AI Docker Container.
-   ``cd tvm    bash tvm/docker/build.sh ci_vai_1x bash     bash tvm/docker/bash.sh tvm.ci_vai_1x``
+::
+   cd tvm 
+   bash tvm/docker/build.sh ci_vai_1x bash
+   bash tvm/docker/bash.sh tvm.ci_vai_1x
+  
    Setup inside container
-   ``source /opt/xilinx/xrt/setup.sh    conda activate vitis-ai-tensorflow``
+ :: 
+   source /opt/xilinx/xrt/setup.sh
+   conda activate vitis-ai-tensorflow
+   
 3. Build TVM inside the container with Vitis-AI
-   ``cd tvm    mkdir build    cp cmake/config.cmake build    cd build    echo set\(USE_LLVM ON\) >> config.cmake    echo set\(USE_VITISAI ON\) >> config.cmake    cmake ..    make -j$(nproc)``
+
+ ::
+ 
+ 
+   cd tvm
+   mkdir build
+   cp cmake/config.cmake build
+   cd build
+   echo set\(USE_LLVM ON\) >> config.cmake
+   echo set\(USE_VITISAI ON\) >> config.cmake
+   cmake ..
+   make -j$(nproc)
 
 Edge requirements
 ^^^^^^^^^^^^^^^^^
@@ -197,8 +250,17 @@ Edge hardware setup
 4. Set up DPU on Pynq by following the steps here: `DPU Pynq
    setup <https://github.com/Xilinx/DPU-PYNQ>`__
 5. Run the following command to download the DPU bitstream:
-   ``python3 -c 'from pynq_dpu import DpuOverlay ; overlay = DpuOverlay("dpu.bit")'``
-6. Check whether the DPU kernel is alive: ``dexplorer -w``
+
+   ::
+
+
+     python3 -c 'from pynq_dpu import DpuOverlay ; overlay = DpuOverlay("dpu.bit")'
+  
+6. Check whether the DPU kernel is alive:
+   ::
+
+
+     dexplorer -w
 
 Edge TVM setup
 ^^^^^^^^^^^^^^
@@ -208,15 +270,43 @@ Building TVM depends on the Xilinx
 interface between TVM and Vitis-AI tools.
 
 1. First install the PyXIR h5py and pydot dependencies:
-   ``apt-get install libhdf5-dev     pip3 install pydot h5py``
+::
+
+
+   apt-get install libhdf5-dev
+   pip3 install pydot h5py
 2. Install PyXIR
-   ``git clone --recursive https://github.com/Xilinx/pyxir.git     cd pyxir     python3 setup.py install --debug --use_vai_rt_aarch64``
+::
+
+
+   git clone --recursive https://github.com/Xilinx/pyxir.git
+   cd pyxir
+   python3 setup.py install --debug --use_vai_rt_aarch64
+   
 3. Build TVM with Vitis-AI
-   ``git clone --recursive https://github.com/apache/incubator-tvm     cd incubator-tvm     mkdir build     cp cmake/config.cmake build     cd build     echo set\(USE_VITISAI ON\) >> config.cmake     cmake ..     make``
+::
+
+
+   git clone --recursive https://github.com/apache/incubator-tvm
+   cd incubator-tvm
+   mkdir build
+   cp cmake/config.cmake build
+   cd build
+   echo set\(USE_VITISAI ON\) >> config.cmake
+   cmake ..     
+   make
+   
 4. Add TVM to Python path
-   ``export PYTHONPATH=$PYTHONPATH:{PATH-TO-INCUBATOR-TVM}/python:{PATH-TO-INCUBATOR-TVM}/topi/python``
+::
+   
+   
+   export PYTHONPATH=$PYTHONPATH:{PATH-TO-INCUBATOR-TVM}/python:{PATH-TO-INCUBATOR-TVM}/topi/python
 5. Check whether the setup was successful in the Python shell:
-   ``python3 -c 'import pyxir; import tvm'``
+::
+
+
+   python3 -c 'import pyxir; import tvm'
+
 
 Getting started
 ---------------
