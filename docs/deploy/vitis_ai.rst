@@ -117,24 +117,35 @@ Hardware setup and docker build
       
    -  Power cycle the system.
    
-5. Clone tvm repo
+5. Clone tvm repo and pyxir repo
    ::
    
    
       git clone --recursive https://github.com/apache/incubator-tvm.git
+      git clone --recursive https://github.com/Xilinx/pyxir.git
    
 6. Build and start the tvm runtime Vitis-AI Docker Container.
    ::
 
 
-      bash incubator-tvm/docker/build.sh ci_vai_1x bash
-      bash incubator-tvm/docker/bash.sh tvm.ci_vai_1x
+      bash incubator-tvm/docker/build.sh ci_vai bash
+      bash incubator-tvm/docker/bash.sh tvm.ci_vai
+	  
       #Setup inside container
       source /opt/xilinx/xrt/setup.sh
       . $VAI_ROOT/conda/etc/profile.d/conda.sh
       conda activate vitis-ai-tensorflow
+      
+7. Install PyXIR
+   ::
+
+
+
+     cd pyxir
+     sudo python3 setup.py install --use_vai_rt_dpucadx8
+
    
-7. Build TVM inside the container with Vitis-AI
+8. Build TVM inside the container with Vitis-AI
    ::
 
 
@@ -146,7 +157,7 @@ Hardware setup and docker build
       cmake ..
       make -j$(nproc)
    
-8.  Add TVM to Python path
+9.  Add TVM to Python path
     :: 
    
    
@@ -196,18 +207,17 @@ Host setup and docker build
    git clone --recursive https://github.com/apache/incubator-tvm.git
 2. Build and start the tvm runtime Vitis-AI Docker Container.
 ::
+   cd incubator-tvm 
    bash incubator-tvm/docker/build.sh ci_vai bash
    bash incubator-tvm/docker/bash.sh tvm.ci_vai
   
    #Setup inside container
+   source /opt/xilinx/xrt/setup.sh
    conda activate vitis-ai-tensorflow
    
-3. Build TVM inside the container with Vitis-AI
-
- ::
- 
- 
-   cd incubator-tvm
+2. Build TVM inside the container with Vitis-AI.
+::
+   cd incubator-tvm 
    mkdir build
    cp cmake/config.cmake build
    cd build
@@ -277,7 +287,7 @@ interface between TVM and Vitis-AI tools.
 
    git clone --recursive https://github.com/Xilinx/pyxir.git
    cd pyxir
-   python3 setup.py install --debug --use_vai_rt_aarch64
+   sudo python3 setup.py install --use_vai_rt_dpuczdx8g
    
 3. Build TVM with Vitis-AI
 ::
@@ -585,3 +595,5 @@ inference.
     module.load_params(loaded_params)
     module.set_input(name, data)
     module.run()
+
+
