@@ -127,7 +127,6 @@ Hardware setup and docker build
    ::
 
 
-      cd incubator-tvm
       bash incubator-tvm/docker/build.sh ci_vai_1x bash
       bash incubator-tvm/docker/bash.sh tvm.ci_vai_1x
       #Setup inside container
