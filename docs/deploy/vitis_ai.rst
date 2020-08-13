@@ -130,7 +130,7 @@ Hardware setup and docker build
       cd tvm
       bash tvm/docker/build.sh ci_vai_1x bash
       bash tvm/docker/bash.sh tvm.ci_vai_1x
-      Setup inside container
+      #Setup inside container
       source /opt/xilinx/xrt/setup.sh
       . $VAI_ROOT/conda/etc/profile.d/conda.sh
       conda activate vitis-ai-tensorflow
@@ -201,8 +201,7 @@ Host setup and docker build
    bash tvm/docker/build.sh ci_vai_1x bash
    bash tvm/docker/bash.sh tvm.ci_vai_1x
   
-   Setup inside container
- :: 
+   #Setup inside container
    source /opt/xilinx/xrt/setup.sh
    conda activate vitis-ai-tensorflow
    
