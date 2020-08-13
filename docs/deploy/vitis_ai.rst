@@ -291,7 +291,7 @@ interface between TVM and Vitis-AI tools.
    mkdir build
    cp cmake/config.cmake build
    cd build
-   echo set\(USE_VITISAI ON\) >> config.cmake
+   echo set\(USE_VITIS_AI ON\) >> config.cmake
    cmake ..     
    make
    
