@@ -82,7 +82,7 @@ Hardware setup and docker build
    ::
 
 
-   git clone https://github.com/xilinx/vitis-ai
+   git clone --recurse-submodules https://github.com/Xilinx/Vitis-AI
    
 2. Install Docker, and add the user to the docker group. Link the user
    to docker installation instructions from the following docker's
