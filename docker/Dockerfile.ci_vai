@@ -20,6 +20,7 @@ FROM xilinx/vitis-ai:latest
 
 RUN apt-get update --fix-missing
 
+
 COPY install/ubuntu_install_core.sh /install/ubuntu_install_core.sh
 RUN bash /install/ubuntu_install_core.sh
 
@@ -53,7 +54,5 @@ RUN bash /install/ubuntu_install_vai_core.sh
 RUN . $VAI_ROOT/conda/etc/profile.d/conda.sh && \
     conda activate vitis-ai-tensorflow && \
     pip install --no-cache-dir antlr4-python3-runtime
-
-ENV PATH="/opt/vitis_ai/compiler/dnnc/dpuv2:${PATH}"
 
 ENV USER="root"
