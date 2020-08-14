@@ -215,7 +215,16 @@ Host setup and docker build
    source /opt/xilinx/xrt/setup.sh
    conda activate vitis-ai-tensorflow
    
-2. Build TVM inside the container with Vitis-AI.
+3. Install PyXIR
+::
+
+
+   git clone --recursive https://github.com/Xilinx/pyxir.git
+   cd pyxir
+   sudo python3 setup.py install --use_vai_rt_dpuczdx8g
+   
+   
+4. Build TVM inside the container with Vitis-AI.
 ::
    cd incubator-tvm 
    mkdir build
