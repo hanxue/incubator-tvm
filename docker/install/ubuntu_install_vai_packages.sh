@@ -23,6 +23,8 @@ set -o pipefail
 export PYXIR_HOME=/opt/pyxir
 mkdir /opt/pyxir
 
+pip3 install progressbar mxnet==1.5.0
+
 git clone --recursive https://github.com/Xilinx/pyxir.git "${PYXIR_HOME}"
 cd "${PYXIR_HOME}" && python3 setup.py install
 
