@@ -142,7 +142,7 @@ Hardware setup and docker build
 
 
      cd pyxir
-     sudo python3 setup.py install --use_vai_rt_dpucadx8g
+     python3 setup.py install --use_vai_rt_dpucadx8g --user
 
    
 8. Build TVM inside the container with Vitis-AI
