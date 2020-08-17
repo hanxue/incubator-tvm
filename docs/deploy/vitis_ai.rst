@@ -212,7 +212,7 @@ Host setup and docker build
    bash incubator-tvm/docker/bash.sh tvm.ci_vai
   
    #Setup inside container
-   source /opt/xilinx/xrt/setup.sh
+   . $VAI_ROOT/conda/etc/profile.d/conda.sh
    conda activate vitis-ai-tensorflow
    
 3. Install PyXIR
