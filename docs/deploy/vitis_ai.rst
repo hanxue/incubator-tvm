@@ -142,7 +142,7 @@ Hardware setup and docker build
 
 
      cd pyxir
-     sudo python3 setup.py install --use_vai_rt_dpucadx8
+     sudo python3 setup.py install --use_vai_rt_dpucadx8g
 
    
 8. Build TVM inside the container with Vitis-AI
@@ -161,7 +161,7 @@ Hardware setup and docker build
     :: 
    
    
-      export PYTHONPATH=$PYTHONPATH:{PATH-TO-INCUBATOR-TVM}/python:{PATH-TO-INCUBATOR-TVM}/topi/python
+      export PYTHONPATH=$PYTHONPATH:{PATH-TO-INCUBATOR-TVM}/python
       
 Edge (DPUCZDX8G)
 ^^^^^^^^^^^^^^^^
@@ -221,7 +221,7 @@ Host setup and docker build
 
    git clone --recursive https://github.com/Xilinx/pyxir.git
    cd pyxir
-   sudo python3 setup.py install --use_vai_rt_dpuczdx8g
+   sudo python3 setup.py install
    
    
 4. Build TVM inside the container with Vitis-AI.
@@ -315,7 +315,7 @@ interface between TVM and Vitis-AI tools.
 ::
    
    
-   export PYTHONPATH=$PYTHONPATH:{PATH-TO-INCUBATOR-TVM}/python:{PATH-TO-INCUBATOR-TVM}/topi/python
+   export PYTHONPATH=$PYTHONPATH:{PATH-TO-INCUBATOR-TVM}/python
 5. Check whether the setup was successful in the Python shell:
 ::
 
