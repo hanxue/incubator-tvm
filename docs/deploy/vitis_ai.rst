@@ -152,7 +152,8 @@ Hardware setup and docker build
       cd incubator-tvm.git
       mkdir build
       cp cmake/config.cmake build
-      cd build    echo set\(USE_LLVM ON\) >> config.cmake
+      cd build  
+      echo set\(USE_LLVM ON\) >> config.cmake
       echo set\(USE_VITIS_AI ON\) >> config.cmake
       cmake ..
       make -j$(nproc)
