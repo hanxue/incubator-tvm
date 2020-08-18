@@ -20,18 +20,12 @@ set -e
 set -u
 set -o pipefail
 
-# install libraries for building Vitis-AI on ubuntu
-apt-get update && apt-get install -y --no-install-recommends \
-    build-essential\
-    ca-certificates\
-    cmake\
-    sudo\
-    wget\
-    git\
-    vim\
-    graphviz\
-    python-dev\
-    gnupg2
+export PYXIR_HOME=/opt/pyxir
+mkdir /opt/pyxir
 
-apt-get update && apt-get install -y gcc-aarch64-linux-gnu
+pip3 install progressbar mxnet==1.5.0
+
+git clone --recursive https://github.com/Xilinx/pyxir.git "${PYXIR_HOME}"
+cd "${PYXIR_HOME}" && python3 setup.py install
+
 

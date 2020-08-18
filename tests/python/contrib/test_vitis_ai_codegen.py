@@ -16,12 +16,14 @@
 # under the License.
 # pylint: disable=no-else-return, unidiomatic-typecheck, invalid-name, W0611
 """Vitis-AI codegen tests."""
+
 import numpy as np
 
 import tvm
 from tvm import relay
 from tvm.relay import transform
 from tvm.relay.op.contrib.vitis_ai import annotation
+from tvm.contrib.target import vitis_ai
 
 import pyxir
 import pyxir.contrib.target.DPUCADX8G

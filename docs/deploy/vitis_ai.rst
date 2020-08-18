@@ -142,7 +142,7 @@ Hardware setup and docker build
 
 
      cd pyxir
-     sudo python3 setup.py install --use_vai_rt_dpucadx8
+     python3 setup.py install --use_vai_rt_dpucadx8g --user
 
    
 8. Build TVM inside the container with Vitis-AI
@@ -152,7 +152,8 @@ Hardware setup and docker build
       cd incubator-tvm.git
       mkdir build
       cp cmake/config.cmake build
-      cd build    echo set\(USE_LLVM ON\) >> config.cmake
+      cd build  
+      echo set\(USE_LLVM ON\) >> config.cmake
       echo set\(USE_VITIS_AI ON\) >> config.cmake
       cmake ..
       make -j$(nproc)
@@ -161,7 +162,7 @@ Hardware setup and docker build
     :: 
    
    
-      export PYTHONPATH=$PYTHONPATH:{PATH-TO-INCUBATOR-TVM}/python:{PATH-TO-INCUBATOR-TVM}/topi/python
+      export PYTHONPATH=$PYTHONPATH:{PATH-TO-INCUBATOR-TVM}/python
       
 Edge (DPUCZDX8G)
 ^^^^^^^^^^^^^^^^
@@ -212,7 +213,7 @@ Host setup and docker build
    bash incubator-tvm/docker/bash.sh tvm.ci_vai
   
    #Setup inside container
-   source /opt/xilinx/xrt/setup.sh
+   . $VAI_ROOT/conda/etc/profile.d/conda.sh
    conda activate vitis-ai-tensorflow
    
 3. Install PyXIR
@@ -221,7 +222,7 @@ Host setup and docker build
 
    git clone --recursive https://github.com/Xilinx/pyxir.git
    cd pyxir
-   sudo python3 setup.py install --use_vai_rt_dpuczdx8g
+   sudo python3 setup.py install
    
    
 4. Build TVM inside the container with Vitis-AI.
@@ -315,7 +316,7 @@ interface between TVM and Vitis-AI tools.
 ::
    
    
-   export PYTHONPATH=$PYTHONPATH:{PATH-TO-INCUBATOR-TVM}/python:{PATH-TO-INCUBATOR-TVM}/topi/python
+   export PYTHONPATH=$PYTHONPATH:{PATH-TO-INCUBATOR-TVM}/python
 5. Check whether the setup was successful in the Python shell:
 ::
 
