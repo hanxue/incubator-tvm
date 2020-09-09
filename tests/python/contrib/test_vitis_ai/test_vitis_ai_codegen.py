@@ -22,6 +22,7 @@ import numpy as np
 import pytest
 pytest.importorskip('pyxir')
 import pyxir.contrib.target.DPUCADX8G
+import pyxir.contrib.target.DPUCZDX8G
 
 import tvm
 from tvm import relay
@@ -30,62 +31,14 @@ from tvm.relay.op.contrib.vitis_ai import annotation
 from tvm.relay.build_module import bind_params_by_name
 from tvm.contrib.target import vitis_ai
 
+from infrastructure import skip_test, verify_codegen
+
 def set_func_attr(func, compile_name, symbol_name):
     func = func.with_attr("Primitive", tvm.tir.IntImm("int32", 1))
     func = func.with_attr("Inline", tvm.tir.IntImm("int32", 1))
     func = func.with_attr("Compiler", compile_name)
     func = func.with_attr("global_symbol", symbol_name)
     return func
-
-def _create_graph():
-    shape = (10, 10)
-    mod = tvm.IRModule()
-    x = relay.var('x', shape=shape)
-    y = relay.var('y', shape=shape)
-    z = x + x
-    p = y * y
-    func = relay.Function([x, y], p - z)
-    mod["main"] = func
-    params = {}
-    params["x"] = np.random.rand(10, 10).astype('float32')
-    params["y"] = np.random.rand(10, 10).astype('float32')
-    return mod, params
-
-
-def _construct_model(func, params=None):
-    mod = tvm.IRModule()
-    mod["main"] = func
-    if params is None:
-        params = {}
-    mod["main"] = bind_params_by_name(mod["main"], params)
-    mod = annotation(mod, params, "DPUCADX8G")
-    mod = transform.MergeCompilerRegions()(mod)
-    mod = transform.PartitionGraph()(mod)
-    fcompile = tvm._ffi.get_global_func("relay.ext.vitis_ai")
-    subgraph_mod = tvm.IRModule()
-    for _, funcnode in mod.functions.items():
-        if funcnode.attrs and 'Compiler' in funcnode.attrs and \
-           funcnode.attrs['Compiler'] == 'vitis_ai':
-            subgraph_mod["main"] = funcnode
-            with tvm.transform.PassContext(opt_level=3, \
-                                           config={'relay.ext.vitis_ai.options.target':
-                                                   'DPUCADX8G'}):
-                fcompile(subgraph_mod["main"])
-
-
-def test_add():
-    shape = (10, 10)
-    x = relay.var('x', shape=shape)
-    y = x + x
-    func = relay.Function([x], y)
-    _construct_model(func)
-
-def test_relu():
-    shape = (10, 10)
-    x = relay.var('x', shape=shape)
-    y = relay.nn.relu(x)
-    func = relay.Function([x], y)
-    _construct_model(func)
 
 def test_conv2d():
     x = relay.var('x', shape=(1, 3, 224, 224))
@@ -95,7 +48,56 @@ def test_conv2d():
     params = {}
     params["x"] = np.zeros((1, 3, 224, 224), dtype='float32')
     params["w"] = np.random.rand(16, 3, 3, 3).astype('float32')
-    _construct_model(func, params)
+    mod = tvm.IRModule()
+    mod["main"] = func
+    verify_codegen(mod, params=params, dpu_target='DPUCADX8G')
+    verify_codegen(mod, params=params, dpu_target='DPUCZDX8G-zcu104')
+
+def test_depthwise_conv():
+    dtype = 'float32'
+    ishape = (1, 32, 14, 14)
+    wshape = (32, 1, 3, 3)
+    data = relay.var("data", shape=(ishape), dtype=dtype)
+    weights = relay.var("weights", shape=(wshape), dtype=dtype)
+    depthwise_conv2d = relay.nn.conv2d(data,
+                                       weights,
+                                       kernel_size=(3, 3),
+                                       padding=(1, 1),
+                                       groups=32)
+    func = relay.Function([data, weights], depthwise_conv2d)
+    params = {}
+    params["weights"] = np.random.randn(32, 1, 3, 3).astype(dtype)
+    params["data"] = np.random.randn(1, 32, 14, 14).astype(dtype)
+    mod = tvm.IRModule()
+    mod["main"] = func
+    verify_codegen(mod, params=params, dpu_target='DPUCZDX8G-zcu104')
+
+
+def test_bias_add():
+    dtype = 'float32'
+    ishape = (1, 32, 14, 14)
+    data = relay.var("data", shape=(ishape), dtype=dtype)
+    bias = relay.var("bias", relay.TensorType((32, ), dtype))
+    out = relay.nn.bias_add(data, bias)
+    func = relay.Function([data, bias], out)
+    params = {}
+    params["bias"] = np.random.randn(32).astype(dtype)
+    params["data"] = np.random.randn(1, 32, 14, 14).astype(dtype)
+    mod = tvm.IRModule()
+    mod["main"] = func
+    verify_codegen(mod, params=params, dpu_target='DPUCADX8G')
+    verify_codegen(mod, params=params, dpu_target='DPUCZDX8G-zcu104')
+
+
+def test_relu():
+    shape = (10, 10)
+    x = relay.var('x', shape=shape)
+    y = relay.nn.relu(x)
+    func = relay.Function([x], y)
+    mod = tvm.IRModule()
+    mod["main"] = func
+    verify_codegen(mod, dpu_target='DPUCADX8G')
+    verify_codegen(mod, dpu_target='DPUCZDX8G-zcu104')
 
 def test_batchnorm():
     data = relay.var('data', shape=(1, 16, 112, 112))
@@ -113,21 +115,95 @@ def test_batchnorm():
     params["bn_beta"] = np.random.rand(16).astype('float32')
     params["bn_mean"] = np.random.rand(16).astype('float32')
     params["bn_var"] = np.random.rand(16).astype('float32')
-    _construct_model(func, params)
+    mod = tvm.IRModule()
+    mod["main"] = func
+    verify_codegen(mod, params=params, dpu_target='DPUCADX8G')
+    verify_codegen(mod, params=params, dpu_target='DPUCZDX8G-zcu104')
+
+
+def test_add():
+    shape = (10, 10)
+    x = relay.var('x', shape=shape)
+    y = x + x
+    func = relay.Function([x], y)
+    mod = tvm.IRModule()
+    mod["main"] = func
+    verify_codegen(mod, dpu_target='DPUCADX8G')
+    verify_codegen(mod, dpu_target='DPUCZDX8G-zcu104')
+
 
 def test_global_avg_pool2d():
-    shape = (10, 10, 10, 10)
+    shape = (10, 10, 7, 7)
     x = relay.var('x', shape=shape)
     y = relay.nn.global_avg_pool2d(x)
     func = relay.Function([x], y)
-    _construct_model(func)
+    mod = tvm.IRModule()
+    mod["main"] = func
+    verify_codegen(mod, dpu_target='DPUCADX8G')
+    verify_codegen(mod, dpu_target='DPUCZDX8G-zcu104')
+
 
 def test_avg_pool2d():
     shape = (10, 10, 10, 10)
     x = relay.var('x', shape=shape)
     y = relay.nn.avg_pool2d(x, pool_size=(3, 3))
     func = relay.Function([x], y)
-    _construct_model(func)
+    mod = tvm.IRModule()
+    mod["main"] = func
+    verify_codegen(mod, dpu_target='DPUCADX8G')
+    verify_codegen(mod, dpu_target='DPUCZDX8G-zcu104')
+
+
+def test_max_pool2d():
+    shape = (64, 512, 10, 10)
+    x = relay.var('x', shape=shape)
+    y = relay.nn.max_pool2d(x, pool_size=(3, 3))
+    func = relay.Function([x], y)
+    mod = tvm.IRModule()
+    mod["main"] = func
+    verify_codegen(mod, dpu_target='DPUCADX8G')
+    verify_codegen(mod, dpu_target='DPUCZDX8G-zcu104')
+
+
+def test_global_max_pool2d():
+    shape = (1, 512, 7, 7)
+    x = relay.var('x', shape=shape)
+    y = relay.nn.global_max_pool2d(x)
+    func = relay.Function([x], y)
+    mod = tvm.IRModule()
+    mod["main"] = func
+    verify_codegen(mod, dpu_target='DPUCADX8G')
+    verify_codegen(mod, dpu_target='DPUCZDX8G-zcu104')
+
+
+def test_upsampling():
+    shape = (64, 512, 10, 10)
+    x = relay.var('x', shape=shape)
+    y = relay.nn.upsampling(x, scale_h=2, scale_w=2)
+    func = relay.Function([x], y)
+    mod = tvm.IRModule()
+    mod["main"] = func
+    verify_codegen(mod, dpu_target='DPUCADX8G')
+    verify_codegen(mod, dpu_target='DPUCZDX8G-zcu104')
+
+def test_conv2d_transpose():
+    dshape = (1, 3, 18, 18)
+    kshape = (3, 10, 3, 3)
+    oshape = (1, 10, 36, 36)
+    x = relay.var("x", shape=dshape)
+    w = relay.var("w")
+    y = relay.nn.conv2d_transpose(x, w,
+                                  channels=10, kernel_size=(3,3), strides=(2,2),
+                                  padding=(1,1), output_padding=(1, 1))
+    func = relay.Function([x, w], y)
+    params = {}
+    dtype = "float32"
+    params["x"] = np.random.uniform(size=dshape).astype(dtype)
+    params["w"] = np.random.uniform(size=kshape).astype(dtype)
+    mod = tvm.IRModule()
+    mod["main"] = func
+    verify_codegen(mod, params=params, dpu_target='DPUCADX8G')
+    verify_codegen(mod, params=params, dpu_target='DPUCZDX8G-zcu104')
 
 def test_annotate():
     """Test annotation with Vitis-AI DP (DPUCADX8G)"""
@@ -217,10 +293,16 @@ if __name__ == "__main__":
         print("Skip test on Windows for now")
         sys.exit(0)
 
-    test_annotate()
-    test_add()
-    test_relu()
-    test_conv2d()
-    test_batchnorm()
-    test_global_avg_pool2d()
-    test_avg_pool2d()
+    #test_conv2d()
+    #test_depthwise_conv()
+    #test_bias_add()
+    #test_relu()
+    #test_add()
+    #test_max_pool2d()
+    #test_global_max_pool2d()
+    #test_batchnorm()
+    #test_global_avg_pool2d()
+    #test_avg_pool2d()
+    #test_upsampling()
+    test_conv2d_transpose()
+    #test_annotate()
