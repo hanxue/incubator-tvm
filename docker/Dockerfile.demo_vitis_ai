@@ -55,4 +55,16 @@ RUN git clone --recursive https://github.com/Xilinx/pyxir.git && \
     source /opt/xilinx/xrt/setup.sh && \
     python3 setup.py install --use_vai_rt_dpucadx8g --user
 
+# Install TVM
+RUN git clone --recursive https://github.com/apache/incubator-tvm.git && \
+    mkdir -p incubator-tvm/build && \
+    cp incubator-tvm/cmake/config.cmake incubator-tvm/build/ && \
+    cd incubator-tvm/build/ && \
+    echo set\(USE_LLVM ON\) >> config.cmake && \
+    echo set\(USE_VITIS_AI ON\) >> config.cmake && \
+    cmake .. && \
+    make -j$(nproc) && \
+    cd ../python/ && \
+    pip3 install -e . --user
+
 ENV USER="root"
